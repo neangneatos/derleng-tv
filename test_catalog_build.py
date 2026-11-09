@@ -53,6 +53,14 @@ class CatalogBuildTests(unittest.TestCase):
             self.assertEqual(json.loads(data)[0]['n'],name.strip())
             self.assertEqual(json.loads((root/'a/channels_public.json').read_text())[0]['n'],name.strip())
 
+    def test_logo_paths_are_local_content_addressed_only(self):
+        for path, expected in [('logos/' + 'a'*64 + '.webp', True),
+                               ('https://attacker.org/logo.png', False),
+                               ('logos/../../private.webp', False),
+                               ('logos/' + 'a'*64 + '.webp" onerror="alert(1)', False)]:
+            rows,_ = catalog.sanitize_catalog([{'name':'A','url':'https://example.org/a.m3u8','logo':path}])
+            self.assertEqual('l' in rows[0], expected)
+
     def test_empty_build_does_not_replace_release(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'raw.json').write_text('[]');(root/'index.html').write_text('old')

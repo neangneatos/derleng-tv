@@ -6,7 +6,7 @@ Target: **https://tv.derlenghub.com**. Build tools run locally; shared hosting s
 
 Browser → Hostinger page/catalog → direct HTTPS HLS origins, or same-origin PHP relay → HTTP HLS origins. Hls.js 1.7.4 is vendored locally with its license. Native HLS is supported where available. Telegram WebApp SDK remains an official remote script; fonts have system fallbacks.
 
-The catalog is a **compatibility-filtered, unverified availability catalog**, not a guarantee that 5,975 channels work. HTTP and HTTPS HLS streams are accepted, including nonstandard ports. HTTP HLS playback uses the HTTPS PHP relay to avoid browser mixed-content requests. DASH/other unsupported formats and unapproved URL parameters remain excluded. CORS on manifest, segment and key origins, codecs, redirects and regional availability still control playback. A Hostinger CORS header cannot repair an upstream's policy. A bounded PHP relay runs on the Business account for HTTP HLS; no transcoding runs. See README for origin and capacity limits.
+The catalog is a **compatibility-filtered, unverified availability catalog**, not a guarantee that 6,064 channels work. HTTP and HTTPS HLS streams are accepted, including nonstandard ports. HTTP HLS playback uses the HTTPS PHP relay to avoid browser mixed-content requests. DASH/other unsupported formats and unapproved URL parameters remain excluded. CORS on manifest, segment and key origins, codecs, redirects and regional availability still control playback. A Hostinger CORS header cannot repair an upstream's policy. A bounded PHP relay runs on the Business account for HTTP HLS; no transcoding runs. See README for origin and capacity limits.
 
 Python polling bot and supervisor are **not deployed to Business hosting**. The Telegram global menu button can open this static Mini App even when the polling worker is off. Interactive bot commands need the separate Python worker; no new worker has been provisioned by this build.
 
@@ -22,7 +22,7 @@ node test_frontend.cjs
 
 Build output:
 
-- `dist/hostinger/`: candidate web root including relay.php, not project-root legacy HTML.
+- `dist/hostinger/`: candidate web root including relay.php and referenced logos/, not project-root legacy HTML.
 - `dist/derleng-tv-hostinger-<release-id>.zip`: this archive is the source for deployment (refresh timestamps in a deployment copy).
 - `dist/catalog-build-report.json`: exclusion counts (not public).
 - `dist/latest-release.json`: selected archive/release.
@@ -66,3 +66,7 @@ Restore the previous tested static archive to the **TV site only**, then verify 
 - https://developers.hostinger.com/openapi/openapi.json
 
 The actual Business plan was verified through the existing authenticated account API. Public deployment evidence/status is recorded separately; this guide alone is not proof of live deployment.
+
+## Channel logo assets
+
+Keep the generated logos/ directory with its matching catalog. All referenced WebP files are bundled locally; the build fails if a referenced file is missing. Content-hashed filenames make asset references stable. Verify representative logo hashes after upload and image decoding/fallback in the browser. Do not substitute external hotlinks or upload only index.html.

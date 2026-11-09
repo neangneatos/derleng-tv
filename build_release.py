@@ -24,6 +24,14 @@ def build_release(destination=None):
         (stage/'vendor').mkdir()
         for name in ('hls-1.7.4.min.js','hls-LICENSE.txt'):
             shutil.copyfile(BASE/'vendor'/name,stage/'vendor'/name)
+        # Ship only referenced, content-addressed local logos.
+        catalog = json.loads((stage/'channels_public.json').read_text())
+        for logo in sorted({c['l'] for c in catalog if c.get('l')}):
+            source = BASE / logo
+            if not source.is_file():
+                raise ValueError('Missing channel logo: ' + logo)
+            (stage/'logos').mkdir(exist_ok=True)
+            shutil.copyfile(source, stage/logo)
         html=(stage/'index.html').read_text()
         scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
         hashes=' '.join("'sha256-"+base64.b64encode(hashlib.sha256(s.encode()).digest()).decode()+"'" for s in scripts)
@@ -34,7 +42,8 @@ def build_release(destination=None):
              "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me")
         files=[str(p.relative_to(stage)) for p in stage.rglob('*') if p.is_file()]
         files += ['health.json','release-manifest.json']
-        allow='|'.join(re.escape(f) for f in sorted(files))
+        allow='|'.join(re.escape(f) for f in sorted(files) if not f.startswith('logos/'))
+        allow += r'|logos/[a-f0-9]{64}\.webp'
         htaccess=('Options -Indexes\nDirectoryIndex index.html\n'
                   '<IfModule mod_rewrite.c>\nRewriteEngine On\n'
                   'RewriteRule ^proxy/?$ - [G,L]\n'

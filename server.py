@@ -250,6 +250,9 @@ class DerlengTVRequestHandler(BaseHTTPRequestHandler):
         if re.fullmatch(r'/channels\.[a-f0-9]{16}\.json', clean_path):
             asset_meta = {'file': clean_path[1:], 'mime': 'application/json; charset=utf-8',
                           'compressible': True, 'cache': 'public, max-age=31536000, immutable'}
+        elif re.fullmatch(r'/logos/[a-f0-9]{64}\.webp', clean_path):
+            asset_meta = {'file': clean_path[1:], 'mime': 'image/webp',
+                          'compressible': False, 'cache': 'public, max-age=31536000, immutable'}
         elif clean_path == '/health.json':
             asset_meta = {'file': 'health.json', 'mime': 'application/json; charset=utf-8',
                           'compressible': True, 'cache': 'no-cache, must-revalidate'}

@@ -631,6 +631,8 @@ __HEAD_LINKS__
       gap: 5px;
     }
 
+    .cat-btn[hidden] { display: none; }
+
     .cat-btn.active {
       background: var(--brand-gradient);
       color: #031024;
@@ -708,6 +710,10 @@ __HEAD_LINKS__
       flex-shrink: 0;
     }
 
+    .ch-icon-badge { position: relative; overflow: hidden; flex-shrink: 0; }
+    .channel-logo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 3px; background: #f8fafc; }
+    .channel-logo[hidden] { display: none; }
+    .channel-initials { font-size: 12px; font-weight: 800; }
     .channel-row.active .ch-icon-badge {
       background: rgba(0, 242, 254, 0.15);
       border-color: rgba(0, 242, 254, 0.4);
@@ -870,12 +876,19 @@ __HEAD_LINKS__
 
     <div id="cat-bar">
       <button class="cat-btn active" data-cat="Cambodia" type="button"><span>🇰🇭</span> កម្ពុជា</button>
+      <button class="cat-btn" data-cat="ALL" type="button"><span>🌍</span> ប៉ុស្តិ៍ទាំងអស់</button>
       <button class="cat-btn" data-cat="Kids" type="button"><span>🧸</span> កុមារ</button>
       <button class="cat-btn" data-cat="Sports" type="button"><span>⚽</span> កីឡា</button>
       <button class="cat-btn" data-cat="News" type="button"><span>📰</span> ព័ត៌មាន</button>
       <button class="cat-btn" data-cat="Movies" type="button"><span>🎬</span> ភាពយន្ត</button>
       <button class="cat-btn" data-cat="Documentary" type="button"><span>📚</span> ឯកសារ</button>
-      <button class="cat-btn" data-cat="ALL" type="button"><span>🌍</span> ប៉ុស្តិ៍ទាំងអស់</button>
+      <button class="cat-btn" data-cat="Music" type="button"><span>🎵</span> តន្ត្រី</button>
+      <button class="cat-btn" data-cat="Education" type="button"><span>🎓</span> អប់រំ</button>
+      <button class="cat-btn" data-cat="Religious" type="button"><span>🕊️</span> សាសនា</button>
+      <button class="cat-btn" data-cat="Business" type="button"><span>📈</span> ពាណិជ្ជកម្ម</button>
+      <button class="cat-btn" data-cat="Lifestyle" type="button"><span>✨</span> របៀបរស់នៅ</button>
+      <button class="cat-btn" data-cat="Entertainment" type="button"><span>🎭</span> កម្សាន្ត</button>
+      <button class="cat-btn" data-cat="General" type="button"><span>📺</span> ទូទៅ</button>
     </div>
   </section>
 
@@ -938,6 +951,7 @@ __HEAD_LINKS__
     let playSessionId = 0;
     let streamWatchdogTimer = null;
     let retryTimer = null;
+    let bufferingTimer = null;
     let retryAttemptCount = 0;
     let hlsNetworkRetryCount = 0;
     let hlsMediaRetryCount = 0;
@@ -1019,7 +1033,44 @@ __HEAD_LINKS__
       }
     }
 
+    function clearBufferingTimer() {
+      if (bufferingTimer !== null) {
+        clearTimeout(bufferingTimer);
+        bufferingTimer = null;
+      }
+    }
+
+    function recordMediaProgress() {
+      const advanced = !video.paused && !video.seeking &&
+        video.currentTime > lastMediaTime + 0.01;
+      if (advanced) {
+        lastProgressAt = Date.now();
+        clearBufferingTimer();
+        setPlayerState('PLAYING');
+      }
+      lastMediaTime = video.currentTime;
+      return advanced;
+    }
+
+    function scheduleBuffering(sid, name) {
+      // 'stalled' describes network fetching, not necessarily playback.
+      // Ignore brief gaps; require a full grace period without media progress.
+      if (bufferingTimer !== null) return;
+      const startTime = video.currentTime;
+      bufferingTimer = setTimeout(() => {
+        bufferingTimer = null;
+        if (sid !== playSessionId || failurePending || playerSuspended ||
+            document.hidden || video.paused) return;
+        if (video.currentTime > startTime + 0.01) {
+          recordMediaProgress();
+          return;
+        }
+        setPlayerState('BUFFERING', name);
+      }, 1200);
+    }
+
     function clearTimers() {
+      clearBufferingTimer();
       if (streamWatchdogTimer) {
         clearTimeout(streamWatchdogTimer);
         streamWatchdogTimer = null;
@@ -1054,6 +1105,8 @@ __HEAD_LINKS__
       streamWatchdogTimer = setTimeout(() => {
         if (sid !== playSessionId || failurePending || playerSuspended) return;
         if (document.hidden) { lastProgressAt = Date.now(); watchProgress(sid); return; }
+        // Also sample the clock when a browser throttles timeupdate events.
+        recordMediaProgress();
         if (!video.paused && Date.now() - lastProgressAt >= STREAM_TIMEOUT_MS) {
           handleStreamFailure(sid, 'ការផ្សាយមិនឆ្លើយតប (Stream stalled)។');
           return;
@@ -1174,16 +1227,11 @@ __HEAD_LINKS__
 
       lastMediaTime = 0;
       lastProgressAt = Date.now();
-      listenForSession('timeupdate', () => {
-        if (!video.paused && video.currentTime > lastMediaTime + 0.01) {
-          lastProgressAt = Date.now();
-          setPlayerState('PLAYING');
-        }
-        lastMediaTime = video.currentTime;
-      }, sessionId);
-      listenForSession('waiting', () => setPlayerState('BUFFERING', ch.n), sessionId);
-      listenForSession('stalled', () => setPlayerState('BUFFERING', ch.n), sessionId);
-      listenForSession('playing', () => { lastProgressAt = Date.now(); }, sessionId);
+      listenForSession('timeupdate', recordMediaProgress, sessionId);
+      listenForSession('waiting', () => scheduleBuffering(sessionId, ch.n), sessionId);
+      listenForSession('stalled', () => scheduleBuffering(sessionId, ch.n), sessionId);
+      // An event alone must neither claim LIVE nor reset the no-progress watchdog.
+      listenForSession('playing', recordMediaProgress, sessionId);
       watchProgress(sessionId);
 
       const attachAndPlay = () => {
@@ -1203,7 +1251,7 @@ __HEAD_LINKS__
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             if (sessionId !== playSessionId) return;
-            setPlayerState('BUFFERING', ch.n);
+            scheduleBuffering(sessionId, ch.n);
             startPlaybackWithMutedFallback(sessionId);
           });
           const tryNativeOrFailure = (sid) => {
@@ -1277,7 +1325,10 @@ __HEAD_LINKS__
     function buildChannelRowHtml(ch, idx) {
       const isPlaying = (currentChannel && currentChannel.u === ch.u);
       const activeClass = isPlaying ? ' active' : '';
-      const icon = getChannelIcon(ch);
+      const initials = ch.n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => Array.from(w)[0]).join('').toUpperCase();
+      const logo = typeof ch.l === 'string' && /^logos\/[a-f0-9]{64}\.webp$/.test(ch.l)
+        ? '<img class="channel-logo" src="' + ch.l + '" alt="' + escapeHtml(ch.n) + ' logo" loading="lazy" decoding="async" width="44" height="44">' : '';
+      const icon = '<span class="channel-initials" aria-hidden="true">' + escapeHtml(initials) + '</span>' + logo;
       const rightIndicator = isPlaying
         ? '<div class="equalizer"><span></span><span></span><span></span></div>'
         : '<div class="play-arrow">▶</div>';
@@ -1328,6 +1379,13 @@ __HEAD_LINKS__
     }
 
     function render() {
+      catBtns.forEach(btn => {
+        const cat = btn.dataset.cat;
+        const count = channels.filter(ch => cat === 'ALL' || (cat === 'Cambodia' && (ch.c === 'KH' || ch.g === 'Cambodia')) || ch.t === cat).length;
+        btn.hidden = count === 0;
+        btn.title = count.toLocaleString() + ' channels';
+        btn.setAttribute('aria-label', btn.textContent.trim() + ' (' + count.toLocaleString() + ')');
+      });
       const q = searchInput.value.toLowerCase().trim();
       clearSearchBtn.style.display = q ? 'block' : 'none';
 
@@ -1345,6 +1403,13 @@ __HEAD_LINKS__
         'News': 'ប៉ុស្តិ៍ព័ត៌មាន ២៤/៧',
         'Movies': 'ប៉ុស្តិ៍ភាពយន្ត & កុន',
         'Documentary': 'ប៉ុស្តិ៍ភាពយន្តឯកសារ',
+        'Music': 'ប៉ុស្តិ៍តន្ត្រី',
+        'Education': 'ប៉ុស្តិ៍អប់រំ',
+        'Religious': 'ប៉ុស្តិ៍សាសនា',
+        'Business': 'ប៉ុស្តិ៍ពាណិជ្ជកម្ម',
+        'Lifestyle': 'ប៉ុស្តិ៍របៀបរស់នៅ',
+        'Entertainment': 'ប៉ុស្តិ៍កម្សាន្ត',
+        'General': 'ប៉ុស្តិ៍ទូទៅ',
         'ALL': 'ប៉ុស្តិ៍ផ្សាយទាំងអស់'
       };
       catHeading.textContent = catNamesKh[currentCat] || (currentCat === 'ALL' ? 'ប៉ុស្តិ៍ទាំងអស់' : currentCat);
@@ -1360,6 +1425,11 @@ __HEAD_LINKS__
       renderedCount = 0;
       appendNextBatch();
     }
+
+    // Capture image failures without inline handlers (release CSP forbids them).
+    listEl.addEventListener('error', event => {
+      if (event.target.matches('.channel-logo')) event.target.hidden = true;
+    }, true);
 
     listEl.addEventListener('click', event => {
       const row = event.target.closest('.channel-row');
@@ -1690,7 +1760,7 @@ __HEAD_LINKS__
         currentCat = reqCat;
       } else if (found) {
         if (found.g === 'Cambodia' || found.c === 'KH') currentCat = 'Cambodia';
-        else if (found.t && ['Kids', 'Sports', 'News', 'Movies', 'Documentary'].includes(found.t)) currentCat = found.t;
+        else if (found.t && Array.from(catBtns).some(btn => btn.dataset.cat === found.t)) currentCat = found.t;
         else currentCat = 'ALL';
       }
 

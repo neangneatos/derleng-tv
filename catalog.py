@@ -72,6 +72,9 @@ def sanitize_catalog(records):
                 fields[compact] = value.strip()
             if fields['t'] not in ('Cambodia','Kids','Sports','News','Movies','Documentary') and any(x in (name+' '+fields['g']).lower() for x in ('kid','cartoon')):
                 fields['t'] = 'Kids'
+            logo = record.get('logo', record.get('l', ''))
+            if isinstance(logo, str) and re.fullmatch(r'logos/[a-f0-9]{64}\.webp', logo):
+                fields['l'] = logo
             public.append(dict(id=hashlib.sha256(url.encode()).hexdigest()[:16], n=name, u=url,
                                protocol='hls', availability='unverified', **fields))
             seen.add(url)

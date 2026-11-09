@@ -8,15 +8,25 @@ Khmer-first Telegram Mini App and standalone web TV player, deployed as an HTTPS
 
 Verified November 10, 2026 (Asia/Phnom_Penh):
 
-- Release: `f13c299e10e4733c`
-- Catalog version: `7663174466449ba6`
-- **5,975 published channel entries: 5,610 HTTPS and 365 HTTP.**
+- Release: `8462f86d358ad0fd`
+- Catalog version: `49b3c49010de3067`
+- **6,064 published channel entries: 5,699 HTTPS and 365 HTTP.**
 - Both HTTP and HTTPS HLS URLs are accepted; explicit nonstandard ports are preserved.
 - Catalog inclusion is **not verified working playback**. HTTP HLS channels are fetched through the same-origin HTTPS `relay.php` endpoint; HTTPS channels remain direct. This avoids HTTP mixed-content requests from the browser. Upstream failures, formats and origin restrictions can still prevent playback. Fresh News was browser-playback-tested; the entire catalog is not certified.
 
+### Categories and broadcaster logos
+
+The 89 additions were previously qualified by two browser playback checks, playlist advancement and visual review. This does not certify the older catalog or future availability.
+
+All Channels is beside Cambodia, followed by 12 genre tabs: Kids, Sports, News, Movies, Documentary, Music, Education, Religious, Business, Lifestyle, Entertainment and General. Empty genre tabs hide; country and genre remain separate. Matched iptv-org metadata corrects default classifications; ambiguous identities retain their prior metadata.
+
+Broadcaster logos are validated raster images, resized to small content-addressed WebP files under `logos/`, and served locally over HTTPS. Lazy loading avoids thousands of image requests on startup. Image failures and unmatched identities use channel initials, not broken images or invented broadcaster logos. See [catalog enrichment](docs/catalog-enrichment-20261110.md) for coverage and provenance.
+
+The loading overlay now waits for sustained lack of video progress; transient fetch stalls no longer cover advancing video.
+
 ### Catalog counts
 
-The original local input contains **6,172 records**. This release restores **806** entries compared with the first HTTPS-only release (5,169). Remaining exclusions:
+The original local input contained **6,172 records**. Restoring HTTP/nonstandard-port sources recovered **806** entries compared with the first HTTPS-only release (5,169), producing 5,975. Adding 89 newly researched entries produces **6,064**. The local raw input now has 6,261 records; the same 197 policy exclusions remain:
 
 | First rejection reason | Entries |
 | --- | ---: |
@@ -28,7 +38,7 @@ The original local input contains **6,172 records**. This release restores **806
 
 These are policy exclusions, not confirmed dead channels. Counts by reason changed because HTTP/port checks no longer reject entries before other validation runs. DASH and extensionless sources require separate player/source validation; credential-bearing URLs are not published. The historical first-release counts remain in [original build counts](docs/original-catalog-build-report.json).
 
-The committed `channels.json` is the **sanitized public snapshot**, not the raw private input. A fresh build reports 5,975 published and zero rejected.
+The committed `channels.json` is the **sanitized public snapshot**, not the raw private input. A fresh build reports 6,064 published and zero rejected after adding 89 separately researched entries.
 
 The UI initially embeds a small bootstrap selection, then fetches the full versioned catalog. A category, search filter, or failed full-catalog download can show fewer results than the total. Clear filters and check that the versioned catalog request succeeds before treating the visible count as the total.
 
@@ -90,7 +100,7 @@ npx playwright install chromium
 npm test
 ```
 
-The current revision passes **23 Python tests and 9 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
+The current revision passes **25 Python tests and 13 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
 
 ## Deploy to Hostinger Business
 

@@ -20,9 +20,9 @@ const server = http.createServer((req, res) => {
   res.setHeader('Content-Security-Policy', csp);
   const pathname = new URL(req.url, 'http://localhost').pathname;
   const name = pathname === '/' ? 'index.html' : pathname.slice(1);
-  if (!/^[a-zA-Z0-9_.-]+$/.test(name)) { res.writeHead(404).end(); return; }
+  if (!/^(?:[a-zA-Z0-9_.-]+|logos\/[a-f0-9]{64}\.webp)$/.test(name)) { res.writeHead(404).end(); return; }
   try {
-    res.setHeader('Content-Type', name.endsWith('.html') ? 'text/html' : name.endsWith('.json') ? 'application/json' : 'application/octet-stream');
+    res.setHeader('Content-Type', name.endsWith('.html') ? 'text/html' : name.endsWith('.webp') ? 'image/webp' : name.endsWith('.json') ? 'application/json' : 'application/octet-stream');
     res.end(fs.readFileSync(path.join(root, name)));
   } catch { res.writeHead(404).end(); }
 });
@@ -127,6 +127,61 @@ const server = http.createServer((req, res) => {
     assert((await text(page)).includes('LIVE'));
     await page.clock.runFor(21000);
     assert(!(await text(page)).includes('LIVE'));
+  });
+  await scenario('network stalled and transient waiting do not cover advancing video', async page => {
+    await open(page);
+    await page.evaluate(() => {
+      const v = document.querySelector('#video');
+      v.currentTime = 1; v.dispatchEvent(new Event('timeupdate'));
+      v.dispatchEvent(new Event('stalled'));
+    });
+    assert((await text(page)).includes('LIVE'), 'Fetch stalled is not playback stalled');
+    await page.evaluate(() => document.querySelector('#video').dispatchEvent(new Event('waiting')));
+    assert((await text(page)).includes('LIVE'), 'Debounce transient waiting');
+    await page.clock.runFor(400);
+    await page.evaluate(() => {
+      const v = document.querySelector('#video');
+      v.currentTime = 1.4; v.dispatchEvent(new Event('timeupdate'));
+    });
+    await page.clock.runFor(1200);
+    assert((await text(page)).includes('LIVE'));
+  });
+  await scenario('sustained waiting buffers and clears only with progress', async page => {
+    await open(page);
+    await page.evaluate(() => {
+      const v = document.querySelector('#video');
+      v.currentTime = 1; v.dispatchEvent(new Event('timeupdate'));
+      v.dispatchEvent(new Event('waiting'));
+    });
+    await page.clock.runFor(1600);
+    assert(!(await text(page)).includes('LIVE'));
+    await page.evaluate(() => document.querySelector('#video').dispatchEvent(new Event('playing')));
+    assert(!(await text(page)).includes('LIVE'));
+    await page.evaluate(() => {
+      const v = document.querySelector('#video');
+      v.currentTime = 2; v.dispatchEvent(new Event('timeupdate'));
+    });
+    assert((await text(page)).includes('LIVE'));
+  });
+  await scenario('cached logos decode, failures use initials, and genres are reachable', async page => {
+    await open(page);
+    await page.waitForFunction(() => fullCatalogLoaded);
+    const logo = page.locator('.channel-logo').first();
+    assert(await logo.count(), 'Expected cached broadcaster logo');
+    await logo.evaluate(img => img.decode());
+    assert(await logo.evaluate(img => img.naturalWidth > 0));
+    await logo.evaluate(img => img.dispatchEvent(new Event('error')));
+    assert(await logo.evaluate(img => img.hidden));
+    assert(await logo.locator('..').locator('.channel-initials').textContent());
+    await page.locator('[data-cat="ALL"]').click();
+    assert.equal(await page.evaluate(() => window.activeFiltered.length), catalog.length);
+    const genres = [...new Set(catalog.map(c => c.t))];
+    for (const genre of genres) {
+      const tab = page.locator('.cat-btn[data-cat="' + genre + '"]');
+      assert.equal(await tab.count(), 1, 'Genre needs a tab: ' + genre);
+      await tab.click();
+      assert.equal(await page.evaluate(() => window.activeFiltered.length), catalog.filter(c => c.t === genre).length);
+    }
   });
   await scenario('fatal media recovery and application retries terminate', async page => {
     await open(page);
