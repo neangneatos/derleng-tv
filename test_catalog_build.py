@@ -10,15 +10,26 @@ import build_ui
 
 class CatalogBuildTests(unittest.TestCase):
     def test_unsafe_urls_and_unsupported_protocols(self):
-        for url in ['http://example.org/a.m3u8','https://127.0.0.1/a.m3u8',
+        for url in ['https://127.0.0.1/a.m3u8',
                     'https://169.254.169.254/a.m3u8','https://localhost/a.m3u8',
                     'https://10.0.0.1/a.m3u8','https://2130706433/a.m3u8',
                     'https://example.org/a.mpd','https://example.org/a.m3u8?token=123',
-                    'https://user:pass@example.org/a.m3u8','https://example.org:8080/a.m3u8',
+                    'https://user:pass@example.org/a.m3u8',
                     'https://example.org/a.m3u8?auth%69d=x','javascript:alert(1)',
                     'https://example.org/a.m3u8#secret']:
             with self.subTest(url=url), self.assertRaises(ValueError): catalog.public_url(url)
         self.assertEqual(catalog.public_url('https://example.org/a.m3u8?channel_id=4'), 'https://example.org/a.m3u8?channel_id=4')
+
+    def test_http_https_and_ports_preserved(self):
+        for url in ['http://example.org/a.m3u8', 'http://example.org:8080/a.m3u8',
+                    'https://example.org:8443/a.m3u8']:
+            self.assertEqual(catalog.public_url(url), url)
+        rows, rejected = catalog.sanitize_catalog([
+            {'name': 'A', 'url': 'https://example.org:8443/a.m3u8'},
+            {'name': 'B', 'url': 'https://example.org/a.m3u8'},
+            {'name': 'C', 'url': 'http://example.org/a.m3u8'}])
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rejected, {})
 
     def test_stable_ids_and_deduplication(self):
         rows=[{'name':'A','url':'https://example.org/a.m3u8'}, {'name':'B','url':'https://example.org/a.m3u8'}]

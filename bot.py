@@ -43,7 +43,7 @@ def load_channels():
                 for c in published if isinstance(c, dict) and
                 re.fullmatch(r'[a-zA-Z0-9_-]{8,64}', str(c.get('id', ''))) and
                 isinstance(c.get('n'), str) and isinstance(c.get('u'), str) and
-                c['u'].startswith('https://')]
+                c['u'].startswith(('http://', 'https://'))]
     except (OSError, ValueError):
         return []
 

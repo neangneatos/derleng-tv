@@ -102,7 +102,8 @@ class BackendRegressionTests(unittest.TestCase):
                        {'id': 'fedcba9876543210', 'n': 'HTTP', 'u': 'http://example.org/a.m3u8'}], f)
         with mock.patch.object(bot, 'CHANNELS_FILE', filename):
             channels = bot.load_channels()
-        self.assertEqual(len(channels), 1)
+        self.assertEqual(len(channels), 2)
+        self.assertTrue(any(c["url"].startswith("http://") for c in channels))
         with mock.patch.object(bot, 'CHANNELS', channels), mock.patch.object(bot, 'get_env_config', return_value=('', 'https://tv.derlenghub.com')):
             _, markup = bot.build_category_view('Cambodia')
             link = markup['inline_keyboard'][0][0]['web_app']['url']

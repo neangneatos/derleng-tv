@@ -229,7 +229,7 @@ class DerlengTVVerificationTests(unittest.TestCase):
         self.assertEqual(len({c["id"] for c in catalog}), len(catalog))
 
         for item in catalog:
-            self.assertTrue(item['u'].startswith('https://'))
+            self.assertTrue(item['u'].startswith(('http://', 'https://')))
             self.assertTrue(urllib.parse.urlsplit(item['u']).path.lower().endswith('.m3u8'))
             self.assertNotEqual(item['n'].lower(), 'blocked]')
 

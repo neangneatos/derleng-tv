@@ -29,7 +29,7 @@ def build_release(destination=None):
         hashes=' '.join("'sha256-"+base64.b64encode(hashlib.sha256(s.encode()).digest()).decode()+"'" for s in scripts)
         csp=("default-src 'self'; script-src 'self' https://telegram.org "+hashes+"; "
              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
-             "img-src 'self' data: https:; media-src 'self' blob: https:; connect-src 'self' https:; "
+             "img-src 'self' data: https:; media-src 'self' blob: http: https:; connect-src 'self' http: https:; "
              "worker-src 'self' blob:; object-src 'none'; base-uri 'self'; "
              "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me")
         files=[str(p.relative_to(stage)) for p in stage.rglob('*') if p.is_file()]

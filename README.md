@@ -8,29 +8,27 @@ Khmer-first Telegram Mini App and standalone web TV player, deployed as a static
 
 Verified November 10, 2026 (Asia/Phnom_Penh):
 
-- Release: `bffaaeb5949218f4`
-- Catalog version: `7cf4130f51b8af05`
-- **5,169 published channel entries**, confirmed by downloading the live catalog.
-- Downloadable public assets match the live release manifest's SHA-256 hashes.
-- Catalog inclusion means a compatible URL candidate, **not verified working playback**.
+- Release: `025dc8e8f3a63794`
+- Catalog version: `7663174466449ba6`
+- **5,975 published channel entries: 5,610 HTTPS and 365 HTTP.**
+- Both HTTP and HTTPS HLS URLs are accepted; explicit nonstandard ports are preserved.
+- Catalog inclusion is **not verified working playback**. HTTPS browsers may block HTTP streams as mixed content. Allowing HTTP in the catalog/CSP does not override browser security, CORS, TLS or browser-blocked ports. No automatic HTTPS substitution or public proxy is used.
 
-### Why fewer than 6,000 channels?
+### Catalog counts
 
-The original local input contained **6,172 records**. The static-release policy excluded **1,003**, leaving **5,169**:
+The original local input contains **6,172 records**. This release restores **806** entries compared with the first HTTPS-only release (5,169). Remaining exclusions:
 
 | First rejection reason | Entries |
 | --- | ---: |
-| Non-HTTPS stream URL | 395 |
-| Nonstandard port | 442 |
-| Unsupported stream format/path (not `.m3u8`) | 73 |
-| Unapproved URL query parameters | 80 |
+| Unsupported stream format/path (not `.m3u8`) | 88 |
+| Unapproved URL query parameters | 96 |
 | Private URL form | 6 |
 | Invalid channel name | 7 |
-| **Total excluded** | **1,003** |
+| **Total excluded** | **197** |
 
-These counts describe policy filtering, not 1,003 confirmed dead channels. In particular, nonstandard-port URLs might work elsewhere but are deliberately excluded by this release policy. Do not simply re-enable rejected URLs to advertise “6,000+ working channels.” See [original build counts](docs/original-catalog-build-report.json).
+These are policy exclusions, not confirmed dead channels. Counts by reason changed because HTTP/port checks no longer reject entries before other validation runs. DASH and extensionless sources require separate player/source validation; credential-bearing URLs are not published. The historical first-release counts remain in [original build counts](docs/original-catalog-build-report.json).
 
-The committed `channels.json` is the **already sanitized public snapshot**, not the original raw input. It reproduces the same live catalog and release; a fresh build therefore reports 5,169 published and zero rejected. Rejected/private URLs are intentionally not published here.
+The committed `channels.json` is the **sanitized public snapshot**, not the raw private input. A fresh build reports 5,975 published and zero rejected.
 
 The UI initially embeds a small bootstrap selection, then fetches the full versioned catalog. A category, search filter, or failed full-catalog download can show fewer results than the total. Clear filters and check that the versioned catalog request succeeds before treating the visible count as the total.
 
@@ -43,7 +41,7 @@ Telegram WebView / browser
 Hostinger: HTML + catalog + Hls.js + static assets
         |
         v
-Third-party HTTPS HLS stream origins (direct playback)
+Third-party HTTP/HTTPS HLS stream origins (direct playback)
 
 Optional separate Python polling worker -> Telegram Bot API
 ```

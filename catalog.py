@@ -20,8 +20,8 @@ def public_url(raw):
         port = u.port
     except ValueError:
         raise ValueError('invalid_url')
-    if u.scheme.lower() != 'https':
-        raise ValueError('https_required')
+    if u.scheme.lower() not in ('http', 'https'):
+        raise ValueError('http_or_https_required')
     if u.username is not None or u.password is not None or u.fragment:
         raise ValueError('private_url')
     if not host or host.endswith('.') or '.' not in host or host.endswith(('.local', '.localhost', '.internal', '.test', '.invalid')):
@@ -37,8 +37,6 @@ def public_url(raw):
     else:
         if not address.is_global:
             raise ValueError('private_host')
-    if port not in (None, 443):
-        raise ValueError('nonstandard_port')
     if not u.path.lower().endswith('.m3u8'):
         raise ValueError('unsupported_protocol')
     pairs = parse_qsl(u.query, keep_blank_values=True)
@@ -46,7 +44,10 @@ def public_url(raw):
         raise ValueError('unapproved_query')
     if re.search(r'eyJ[a-zA-Z0-9_-]{10,}', raw):
         raise ValueError('private_url')
-    return urlunsplit(('https', host, u.path, urlencode(pairs), ''))
+    authority = ('[' + host + ']') if ':' in host else host
+    if port is not None and port != (443 if u.scheme.lower() == 'https' else 80):
+        authority += ':' + str(port)
+    return urlunsplit((u.scheme.lower(), authority, u.path, urlencode(pairs), ''))
 
 def sanitize_catalog(records):
     public, seen, rejected = [], set(), Counter()

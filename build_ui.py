@@ -1118,7 +1118,7 @@ __HEAD_LINKS__
       );
 
       // Bounded application-level retry policy (applies to all streams)
-      if (retryAttemptCount < MAX_AUTO_RETRIES) {
+      if (!isMixedContent && retryAttemptCount < MAX_AUTO_RETRIES) {
         retryAttemptCount++;
         const delayMs = retryAttemptCount * 1200;
         setPlayerState(
@@ -1134,9 +1134,9 @@ __HEAD_LINKS__
       }
 
       // Budget exhausted: Present informative diagnosis with actionable retry buttons
-      const reasonMsg = customReason || (isMixedContent
+      const reasonMsg = (isMixedContent
         ? 'ប្រភពផ្សាយនេះប្រើប្រាស់ប្រព័ន្ធ HTTP ចាស់ដែលប្រហែលជាត្រូវបានទប់ស្កាត់ដោយកម្មវិធីរុករកលើ HTTPS។'
-        : 'ប្រភពផ្សាយមិនឆ្លើយតប ឬកំពុងផ្អាកដំណើរការបណ្ដោះអាសន្ន។');
+        : customReason || 'ប្រភពផ្សាយមិនឆ្លើយតប ឬកំពុងផ្អាកដំណើរការបណ្ដោះអាសន្ន។');
       setPlayerState('STREAM_UNAVAILABLE', reasonMsg);
     }
 
@@ -1755,7 +1755,7 @@ __HEAD_LINKS__
           const fullData = JSON.parse(xhr.responseText);
           if (!Array.isArray(fullData) || !fullData.every(ch =>
               ch && typeof ch.id === 'string' && typeof ch.n === 'string' &&
-              typeof ch.u === 'string' && ch.u.startsWith('https://') && ch.protocol === 'hls')) {
+              typeof ch.u === 'string' && /^https?:\/\//.test(ch.u) && ch.protocol === 'hls')) {
             catalogFailed(); return;
           }
           channels = fullData;

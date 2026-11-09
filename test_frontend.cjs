@@ -98,6 +98,18 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#now-title').textContent(), absent.n);
     assert.equal(await page.evaluate(() => window.__instances.length), 1);
   });
+  await scenario('full catalog accepts HTTP and preserves nonstandard HTTPS ports', async page => {
+    await open(page);
+    await page.waitForFunction(() => fullCatalogLoaded);
+    assert.equal(await page.evaluate(() => channels.length), catalog.length);
+    for (const channel of [catalog.find(c => c.u.startsWith('http://')),
+                           catalog.find(c => new URL(c.u).protocol === 'https:' && new URL(c.u).port)]) {
+      assert(channel, 'Required scheme/port fixture');
+      await open(page, '?cid=' + channel.id);
+      await page.waitForFunction(url => window.__instances.some(h => h.source === url), channel.u);
+      assert.equal(await page.locator('#now-title').textContent(), channel.n);
+    }
+  });
   await scenario('arbitrary u parameter never becomes a media source', async page => {
     await open(page, '?u=https%3A%2F%2Fattacker.invalid%2Fprivate.m3u8');
     assert(await page.evaluate(() => window.__instances.length > 0));

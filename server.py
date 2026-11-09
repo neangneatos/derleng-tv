@@ -222,7 +222,7 @@ class DerlengTVRequestHandler(BaseHTTPRequestHandler):
                     catalog = json.load(f)
                 catalog_ok = isinstance(catalog, list) and bool(catalog) and all(
                     isinstance(c, dict) and c.get('id') and c.get('n') and
-                    isinstance(c.get('u'), str) and c['u'].startswith('https://')
+                    isinstance(c.get('u'), str) and c['u'].startswith(('http://', 'https://'))
                     for c in catalog)
             except (OSError, ValueError):
                 pass
