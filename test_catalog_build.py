@@ -61,6 +61,30 @@ class CatalogBuildTests(unittest.TestCase):
             rows,_ = catalog.sanitize_catalog([{'name':'A','url':'https://example.org/a.m3u8','logo':path}])
             self.assertEqual('l' in rows[0], expected)
 
+    def test_preferred_source_preserves_id_and_rejects_unsafe_preferences(self):
+        base={'name':'A','url':'http://example.org/a.m3u8'}
+        original,_=catalog.sanitize_catalog([base])
+        for url,allowed in [('https://cdn.example.org/a.m3u8',True),
+                            ('https://127.0.0.1/private.m3u8',False),
+                            ('https://example.org/a.m3u8?token=secret',False),
+                            ('http://example.org/b.m3u8',False)]:
+            rows,_=catalog.sanitize_catalog([dict(base,preferred_url=url)])
+            self.assertEqual(rows[0]['id'],original[0]['id'])
+            self.assertEqual('p' in rows[0],allowed)
+
+    def test_audited_market_fields_and_iso_gb_survive_build(self):
+        rows,_ = catalog.sanitize_catalog([{'name':'A','url':'https://example.org/a.m3u8',
+            'country':'ZZ','group':'Country unverified',
+            'country_basis':'origin_unknown_curated_feed_market',
+            'market_code':'GB','market_name':'United Kingdom'}])
+        self.assertEqual(rows[0]['mc'],'GB')
+        self.assertEqual(rows[0]['mg'],'United Kingdom')
+        records=json.loads(Path(build_ui.RAW_CHANNELS_PATH).read_text())
+        public,_=catalog.sanitize_catalog(records)
+        market_rows=[c for c in public if c.get('country_basis')=='origin_unknown_curated_feed_market']
+        self.assertTrue(market_rows)
+        self.assertTrue(all(c.get('mc') and c.get('mg') for c in market_rows))
+
     def test_empty_build_does_not_replace_release(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'raw.json').write_text('[]');(root/'index.html').write_text('old')

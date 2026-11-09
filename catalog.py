@@ -72,6 +72,21 @@ def sanitize_catalog(records):
                 fields[compact] = value.strip()
             if fields['t'] not in ('Cambodia','Kids','Sports','News','Movies','Documentary') and any(x in (name+' '+fields['g']).lower() for x in ('kid','cartoon')):
                 fields['t'] = 'Kids'
+            basis = record.get('country_basis')
+            if basis in ('broadcaster_origin','origin_unknown_curated_feed_market','unresolved'):
+                fields['country_basis'] = basis
+            market = record.get('market_code', record.get('mc'))
+            market_name = record.get('market_name', record.get('mg'))
+            if isinstance(market,str) and re.fullmatch(r'[A-Z]{2}',market) and isinstance(market_name,str) and market_name.strip():
+                fields['mc'], fields['mg'] = market, market_name.strip()
+            preferred = record.get('preferred_url', record.get('p'))
+            if preferred:
+                try:
+                    preferred = public_url(preferred)
+                    if preferred.startswith('https://'):
+                        fields['p'] = preferred
+                except ValueError:
+                    pass  # An invalid optional preference must not remove a valid original.
             logo = record.get('logo', record.get('l', ''))
             if isinstance(logo, str) and re.fullmatch(r'logos/[a-f0-9]{64}\.webp', logo):
                 fields['l'] = logo

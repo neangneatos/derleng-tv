@@ -36,3 +36,6 @@ Saved detailed matching/download evidence remains in the local research workspac
 category reachability/counts, and the loading-overlay regression.
 Real Fresh News relay and Andorra HTTPS candidate playback passed with LIVE state and hidden overlay.
 Physical iPhone Telegram, audible audio and whole-catalog availability are not certified.
+
+## Subsequent country identity audit
+The later audit withdrew41 uncertain logo matches. Current logo coverage is4,385 with1,679 initials fallbacks; see country-audit-20261110.md. The previous4,426 figure above describes the earlier release.

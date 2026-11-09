@@ -106,7 +106,7 @@ const server = http.createServer((req, res) => {
                            catalog.find(c => new URL(c.u).protocol === 'https:' && new URL(c.u).port)]) {
       assert(channel, 'Required scheme/port fixture');
       await open(page, '?cid=' + channel.id);
-      await page.waitForFunction(url => window.__instances.some(h => h.source === url), channel.u.startsWith('http://') ? '/relay.php?cid=' + channel.id : channel.u);
+      await page.waitForFunction(url => window.__instances.some(h => h.source === url), (channel.p || channel.u).startsWith('http://') ? '/relay.php?cid=' + channel.id : (channel.p || channel.u));
       assert.equal(await page.locator('#now-title').textContent(), channel.n);
     }
   });
@@ -183,6 +183,33 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(() => window.activeFiltered.length), catalog.filter(c => c.t === genre).length);
     }
   });
+  await scenario('verified HTTPS preference preserves channel ID and retries original relay', async page => {
+    const ch = catalog.find(c => c.p && c.u.startsWith('http://'));
+    assert(ch, 'Expected preferred HTTPS fixture');
+    await open(page, '?cid=' + ch.id);
+    assert.equal(await page.evaluate(() => window.__instances.at(-1).source), ch.p);
+    await page.evaluate(() => {
+      const h = window.__instances.at(-1);
+      h.emit('error', {fatal:true,type:'media'});
+      h.emit('error', {fatal:true,type:'media'});
+    });
+    await page.clock.runFor(1250);
+    assert.equal(await page.evaluate(() => window.__instances.at(-1).source), '/relay.php?cid=' + ch.id);
+    assert.equal(await page.locator('#now-title').textContent(), ch.n);
+  });
+  await scenario('country labels distinguish origin from feed markets', async page => {
+    await open(page);
+    await page.waitForFunction(() => fullCatalogLoaded);
+    const labels = await page.evaluate(() => {
+      const marketOnly = channels.find(c => c.country_basis === 'origin_unknown_curated_feed_market');
+      const unknown = channels.find(c => c.country_basis === 'unresolved');
+      const known = channels.find(c => c.country_basis === 'broadcaster_origin');
+      return {market:getCountryLabel(marketOnly), unknown:getCountryLabel(unknown), known:getCountryLabel(known), knownGroup:known.g};
+    });
+    assert(labels.market.includes('origin unverified'));
+    assert.equal(labels.unknown, 'Country unverified');
+    assert.equal(labels.known, labels.knownGroup);
+  });
   await scenario('fatal media recovery and application retries terminate', async page => {
     await open(page);
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -229,7 +256,7 @@ const server = http.createServer((req, res) => {
     await open(page);
     const rows = page.locator('.channel-row');
     assert(await rows.count() > 1);
-    const expected = await page.evaluate(() => { const c = window.activeFiltered[1]; return c.u.startsWith('http://') ? '/relay.php?cid=' + c.id : c.u; });
+    const expected = await page.evaluate(() => { const c = window.activeFiltered[1]; const u = c.p || c.u; return u.startsWith('http://') ? '/relay.php?cid=' + c.id : u; });
     await rows.nth(1).click();
     assert.equal(await page.evaluate(() => window.__instances.at(-1).source), expected);
   });

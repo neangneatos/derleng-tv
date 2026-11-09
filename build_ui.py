@@ -1198,7 +1198,10 @@ __HEAD_LINKS__
       }
       const ch = isRetry && currentChannel ? currentChannel : window.activeFiltered[idx];
       if (!ch) return;
-      const mediaUrl = ch.u.startsWith('http://') ? '/relay.php?cid=' + encodeURIComponent(ch.id) : ch.u;
+      // Keep canonical URL-based IDs/deep links; try a verified HTTPS preference first.
+      // Existing bounded retry falls back to the original source/HTTP relay.
+      const sourceUrl = (!isRetry || retryAttemptCount === 0) ? (ch.p || ch.u) : ch.u;
+      const mediaUrl = sourceUrl.startsWith('http://') ? '/relay.php?cid=' + encodeURIComponent(ch.id) : sourceUrl;
 
       playSessionId++;
       const sessionId = playSessionId;
@@ -1322,6 +1325,13 @@ __HEAD_LINKS__
       }
     }
 
+    function getCountryLabel(ch) {
+      if (ch.country_basis === 'origin_unknown_curated_feed_market' && ch.mg)
+        return ch.mg + ' (feed; origin unverified)';
+      if (ch.country_basis === 'unresolved' || ch.c === 'ZZ') return 'Country unverified';
+      return ch.g || 'Country unverified';
+    }
+
     function buildChannelRowHtml(ch, idx) {
       const isPlaying = (currentChannel && currentChannel.u === ch.u);
       const activeClass = isPlaying ? ' active' : '';
@@ -1340,7 +1350,7 @@ __HEAD_LINKS__
             '<div class="ch-text">' +
               '<div class="ch-name">' + escapeHtml(ch.n) + '</div>' +
               '<div class="ch-meta-row">' +
-                '<span>' + escapeHtml(ch.g || 'Global') + '</span>' +
+                '<span>' + escapeHtml(getCountryLabel(ch)) + '</span>' +
                 '<span class="ch-tag">' + escapeHtml(ch.t || 'Live') + '</span>' +
               '</div>' +
             '</div>' +
@@ -1392,7 +1402,7 @@ __HEAD_LINKS__
       window.activeFiltered = channels.filter(ch => {
         const isKh = (ch.g === 'Cambodia' || ch.c === 'KH');
         const matchCat = (currentCat === 'ALL') || (currentCat === 'Cambodia' && isKh) || (ch.t === currentCat);
-        const matchQ = !q || ch.n.toLowerCase().includes(q) || (ch.g && ch.g.toLowerCase().includes(q));
+        const matchQ = !q || ch.n.toLowerCase().includes(q) || (ch.g && ch.g.toLowerCase().includes(q)) || (ch.mg && ch.mg.toLowerCase().includes(q));
         return matchCat && matchQ;
       });
 

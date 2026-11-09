@@ -8,11 +8,11 @@ Khmer-first Telegram Mini App and standalone web TV player, deployed as an HTTPS
 
 Verified November 10, 2026 (Asia/Phnom_Penh):
 
-- Release: `8462f86d358ad0fd`
-- Catalog version: `49b3c49010de3067`
+- Release: `1ddcce35783f87a5`
+- Catalog version: `cb16c94415c9dfdc`
 - **6,064 published channel entries: 5,699 HTTPS and 365 HTTP.**
 - Both HTTP and HTTPS HLS URLs are accepted; explicit nonstandard ports are preserved.
-- Catalog inclusion is **not verified working playback**. HTTP HLS channels are fetched through the same-origin HTTPS `relay.php` endpoint; HTTPS channels remain direct. This avoids HTTP mixed-content requests from the browser. Upstream failures, formats and origin restrictions can still prevent playback. Fresh News was browser-playback-tested; the entire catalog is not certified.
+- Catalog inclusion is **not verified working playback**. HTTP HLS channels are fetched through the same-origin HTTPS `relay.php` endpoint; HTTPS channels remain direct. Fresh News now prefers a twice-playback-tested HTTPS source, retaining its canonical channel ID and original HTTP relay as bounded retry fallback. This avoids HTTP mixed-content requests from the browser. Upstream failures, formats and origin restrictions can still prevent playback. Fresh News was browser-playback-tested; the entire catalog is not certified.
 
 ### Categories and broadcaster logos
 
@@ -23,6 +23,24 @@ All Channels is beside Cambodia, followed by 12 genre tabs: Kids, Sports, News, 
 Broadcaster logos are validated raster images, resized to small content-addressed WebP files under `logos/`, and served locally over HTTPS. Lazy loading avoids thousands of image requests on startup. Image failures and unmatched identities use channel initials, not broken images or invented broadcaster logos. See [catalog enrichment](docs/catalog-enrichment-20261110.md) for coverage and provenance.
 
 The loading overlay now waits for sustained lack of video progress; transient fetch stalls no longer cover advancing video.
+
+### Country-of-origin audit
+
+All 6,064 entries have an audit record: **4,909 supported broadcaster/channel origins**,
+**1,117 origin-unverified entries with a separately evidenced feed market**, and **38 fully unresolved**.
+Country labels describe broadcaster origin, not CDN location or regional availability.
+Market-only rows explicitly say `(feed; origin unverified)`; unsupported origin codes use `ZZ`.
+UK metadata is normalized to ISO `GB`. Stronger exact-source evidence corrects 105 country labels;
+uncertain name-only identity claims are withdrawn rather than guessed.
+41 associated logo matches were removed: current coverage is **4,385 logos / 1,679 initials fallbacks**.
+
+[Country audit and method](docs/country-audit-20261110.md) ·
+[Per-channel evidence CSV](docs/country-audit-20261110.csv) ·
+[Cambodian source research](docs/cambodia-research-20261110.md)
+
+46 additional/replacement Cambodian stream URLs were researched. No genuinely new station qualified;
+broken, scheduled, header-dependent or identity-ambiguous entries were not imported. The working
+Fresh News HTTPS alternative improves an existing station; it is not counted as an extra channel.
 
 ### Catalog counts
 
@@ -100,7 +118,7 @@ npx playwright install chromium
 npm test
 ```
 
-The current revision passes **25 Python tests and 13 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
+The current revision passes **27 Python tests and 15 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
 
 ## Deploy to Hostinger Business
 
