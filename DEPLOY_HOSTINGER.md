@@ -1,12 +1,12 @@
 # DERLENG TV — Hostinger Business static deployment
 
-Target: **https://tv.derlenghub.com**. Build tools run locally; shared hosting serves only static files. No Python, Node service, database, tunnel, paid upgrade or media proxy is required for the Mini App.
+Target: **https://tv.derlenghub.com**. Build tools run locally; shared hosting serves static files plus the restricted PHP HLS relay. PHP with cURL and a writable private parent directory are required for HTTP HLS playback; no Python, Node service, database, tunnel or paid upgrade is required for the Mini App.
 
 ## Architecture
 
-Browser → Hostinger static page/catalog → upstream HTTP/HTTPS HLS origins. Hls.js 1.7.4 is vendored locally with its license. Native HLS is supported where available. Telegram WebApp SDK remains an official remote script; fonts have system fallbacks.
+Browser → Hostinger page/catalog → direct HTTPS HLS origins, or same-origin PHP relay → HTTP HLS origins. Hls.js 1.7.4 is vendored locally with its license. Native HLS is supported where available. Telegram WebApp SDK remains an official remote script; fonts have system fallbacks.
 
-The catalog is a **compatibility-filtered, unverified availability catalog**, not a guarantee that 5,975 channels work. HTTP and HTTPS HLS streams are accepted, including nonstandard ports. HTTPS browsers may block HTTP playback as mixed content; catalog/CSP acceptance does not override browser restrictions. DASH/other unsupported formats and unapproved URL parameters remain excluded. CORS on manifest, segment and key origins, codecs, redirects and regional availability still control playback. A Hostinger CORS header cannot repair an upstream's policy. No streaming/transcoding/relay runs on the Business hosting account.
+The catalog is a **compatibility-filtered, unverified availability catalog**, not a guarantee that 5,975 channels work. HTTP and HTTPS HLS streams are accepted, including nonstandard ports. HTTP HLS playback uses the HTTPS PHP relay to avoid browser mixed-content requests. DASH/other unsupported formats and unapproved URL parameters remain excluded. CORS on manifest, segment and key origins, codecs, redirects and regional availability still control playback. A Hostinger CORS header cannot repair an upstream's policy. A bounded PHP relay runs on the Business account for HTTP HLS; no transcoding runs. See README for origin and capacity limits.
 
 Python polling bot and supervisor are **not deployed to Business hosting**. The Telegram global menu button can open this static Mini App even when the polling worker is off. Interactive bot commands need the separate Python worker; no new worker has been provisioned by this build.
 
@@ -22,12 +22,12 @@ node test_frontend.cjs
 
 Build output:
 
-- `dist/hostinger/`: candidate web root, not project-root legacy HTML.
-- `dist/derleng-tv-hostinger-<release-id>.zip`: **only this archive** is deployed.
+- `dist/hostinger/`: candidate web root including relay.php, not project-root legacy HTML.
+- `dist/derleng-tv-hostinger-<release-id>.zip`: this archive is the source for deployment (refresh timestamps in a deployment copy).
 - `dist/catalog-build-report.json`: exclusion counts (not public).
 - `dist/latest-release.json`: selected archive/release.
 
-The archive is deterministic, contains only 13 public files, excludes `.env`, raw catalog, source, logs and tests. `release-manifest.json` records SHA-256 hashes. `health.json` and `/healthz` are static release markers, not stream/bot readiness claims. `.htaccess` restricts served filenames, disables proxy, forbids private extensions/archives and directories, sets CSP allowing Telegram framing and hash-authorized application script, and applies cache policy. Do not add `X-Frame-Options: SAMEORIGIN/DENY` through hPanel/CDN: it can break Telegram Web.
+The archive is deterministic, contains public static files and relay.php, excludes `.env`, raw catalog, source, logs and tests. `release-manifest.json` records SHA-256 hashes. `health.json` and `/healthz` are static release markers, not stream/bot readiness claims. `.htaccess` restricts served filenames, disables proxy, forbids private extensions/archives and directories, sets CSP allowing Telegram framing and hash-authorized application script, and applies cache policy. Do not add `X-Frame-Options: SAMEORIGIN/DENY` through hPanel/CDN: it can break Telegram Web.
 
 Existing root `index.html`/`channels_public.json` are preserved legacy artifacts, not the deployment source. Edit `build_ui.py` and `catalog.py`, then build. The development server defaults to `dist/hostinger` and binds loopback:
 

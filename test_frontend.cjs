@@ -106,7 +106,7 @@ const server = http.createServer((req, res) => {
                            catalog.find(c => new URL(c.u).protocol === 'https:' && new URL(c.u).port)]) {
       assert(channel, 'Required scheme/port fixture');
       await open(page, '?cid=' + channel.id);
-      await page.waitForFunction(url => window.__instances.some(h => h.source === url), channel.u);
+      await page.waitForFunction(url => window.__instances.some(h => h.source === url), channel.u.startsWith('http://') ? '/relay.php?cid=' + channel.id : channel.u);
       assert.equal(await page.locator('#now-title').textContent(), channel.n);
     }
   });
@@ -174,7 +174,7 @@ const server = http.createServer((req, res) => {
     await open(page);
     const rows = page.locator('.channel-row');
     assert(await rows.count() > 1);
-    const expected = await page.evaluate(() => window.activeFiltered[1].u);
+    const expected = await page.evaluate(() => { const c = window.activeFiltered[1]; return c.u.startsWith('http://') ? '/relay.php?cid=' + c.id : c.u; });
     await rows.nth(1).click();
     assert.equal(await page.evaluate(() => window.__instances.at(-1).source), expected);
   });

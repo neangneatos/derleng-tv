@@ -1110,15 +1110,14 @@ __HEAD_LINKS__
         return;
       }
 
-      const isMixedContent = (
-        window.location.protocol === 'https:' &&
+      const usesHttpRelay = (
         currentChannel &&
         currentChannel.u &&
         currentChannel.u.indexOf('http:') === 0
       );
 
       // Bounded application-level retry policy (applies to all streams)
-      if (!isMixedContent && retryAttemptCount < MAX_AUTO_RETRIES) {
+      if (retryAttemptCount < MAX_AUTO_RETRIES) {
         retryAttemptCount++;
         const delayMs = retryAttemptCount * 1200;
         setPlayerState(
@@ -1134,8 +1133,8 @@ __HEAD_LINKS__
       }
 
       // Budget exhausted: Present informative diagnosis with actionable retry buttons
-      const reasonMsg = (isMixedContent
-        ? 'ប្រភពផ្សាយនេះប្រើប្រាស់ប្រព័ន្ធ HTTP ចាស់ដែលប្រហែលជាត្រូវបានទប់ស្កាត់ដោយកម្មវិធីរុករកលើ HTTPS។'
+      const reasonMsg = (usesHttpRelay
+        ? 'HTTP stream relay could not load this channel. Please try again.'
         : customReason || 'ប្រភពផ្សាយមិនឆ្លើយតប ឬកំពុងផ្អាកដំណើរការបណ្ដោះអាសន្ន។');
       setPlayerState('STREAM_UNAVAILABLE', reasonMsg);
     }
@@ -1146,6 +1145,7 @@ __HEAD_LINKS__
       }
       const ch = isRetry && currentChannel ? currentChannel : window.activeFiltered[idx];
       if (!ch) return;
+      const mediaUrl = ch.u.startsWith('http://') ? '/relay.php?cid=' + encodeURIComponent(ch.id) : ch.u;
 
       playSessionId++;
       const sessionId = playSessionId;
@@ -1199,7 +1199,7 @@ __HEAD_LINKS__
             levelLoadingTimeOut: 10000,
             fragLoadingTimeOut: 12000
           });
-          hls.loadSource(ch.u);
+          hls.loadSource(mediaUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             if (sessionId !== playSessionId) return;
@@ -1211,7 +1211,7 @@ __HEAD_LINKS__
               try { if (hls) { hls.destroy(); hls = null; } } catch (e) {}
               nativeFallbackUsed = true;
               listenForSession('error', () => handleStreamFailure(sid), sid);
-              video.src = ch.u;
+              video.src = mediaUrl;
               startPlaybackWithMutedFallback(sid);
             } else {
               handleStreamFailure(sid);
@@ -1248,7 +1248,7 @@ __HEAD_LINKS__
             }
           });
         } else if (video && video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.src = ch.u;
+          video.src = mediaUrl;
           listenForSession('loadedmetadata', () => startPlaybackWithMutedFallback(sessionId), sessionId);
           listenForSession('error', () => handleStreamFailure(sessionId), sessionId);
         } else if (video) {

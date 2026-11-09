@@ -1,6 +1,6 @@
 # DERLENG TV
 
-Khmer-first Telegram Mini App and standalone web TV player, deployed as a static HTTPS website on **Hostinger Business Web Hosting**.
+Khmer-first Telegram Mini App and standalone web TV player, deployed as an HTTPS website with a bounded PHP HLS relay on **Hostinger Business Web Hosting**.
 
 **Live:** https://tv.derlenghub.com · **Source:** https://github.com/neangneatos/derleng-tv
 
@@ -8,11 +8,11 @@ Khmer-first Telegram Mini App and standalone web TV player, deployed as a static
 
 Verified November 10, 2026 (Asia/Phnom_Penh):
 
-- Release: `025dc8e8f3a63794`
+- Release: `f13c299e10e4733c`
 - Catalog version: `7663174466449ba6`
 - **5,975 published channel entries: 5,610 HTTPS and 365 HTTP.**
 - Both HTTP and HTTPS HLS URLs are accepted; explicit nonstandard ports are preserved.
-- Catalog inclusion is **not verified working playback**. HTTPS browsers may block HTTP streams as mixed content. Allowing HTTP in the catalog/CSP does not override browser security, CORS, TLS or browser-blocked ports. No automatic HTTPS substitution or public proxy is used.
+- Catalog inclusion is **not verified working playback**. HTTP HLS channels are fetched through the same-origin HTTPS `relay.php` endpoint; HTTPS channels remain direct. This avoids HTTP mixed-content requests from the browser. Upstream failures, formats and origin restrictions can still prevent playback. Fresh News was browser-playback-tested; the entire catalog is not certified.
 
 ### Catalog counts
 
@@ -38,10 +38,11 @@ The UI initially embeds a small bootstrap selection, then fetches the full versi
 Telegram WebView / browser
         |
         v
-Hostinger: HTML + catalog + Hls.js + static assets
+Hostinger: HTML + catalog + Hls.js + PHP HTTP-HLS relay
         |
         v
-Third-party HTTP/HTTPS HLS stream origins (direct playback)
+HTTPS origins: direct playback
+HTTP origins: fetched server-side by the HTTPS relay
 
 Optional separate Python polling worker -> Telegram Bot API
 ```
@@ -49,7 +50,7 @@ Optional separate Python polling worker -> Telegram Bot API
 - Khmer UI, categories/search, progressive channel rendering and stable `?cid=<channel-id>` links.
 - Hls.js 1.7.4 with native HLS fallback; bounded recovery and playback-progress checks.
 - One sanitized catalog shared by the Mini App and optional bot.
-- No public stream proxy, transcoder, database or tunnel required.
+- Restricted PHP HLS relay for HTTP channels; no transcoder, database or tunnel required.
 - Generated `.htaccess` restricts public files, disables `/proxy`, and provides security/cache headers.
 - `/health.json` and `/healthz` indicate a static release is present; they do not certify streams or the bot.
 
@@ -71,7 +72,7 @@ Open http://127.0.0.1:8080. Serve over HTTP rather than opening HTML as a local 
 ### Build outputs
 
 - `dist/hostinger/` — complete deployable website.
-- `dist/derleng-tv-hostinger-<release-id>.zip` — deterministic static-only upload archive.
+- `dist/derleng-tv-hostinger-<release-id>.zip` — deterministic web/PHP archive.
 - `dist/latest-release.json` — selected release/archive.
 - `dist/catalog-build-report.json` — current input's filtering results.
 
@@ -143,3 +144,14 @@ Run only one poller per token, on a separate always-on Python host. The worker d
 | `docs/` | Non-sensitive catalog audit counts |
 
 Keep `.env`, credentials, logs, raw/private catalogs and hosting backups out of Git and out of the public web root. Hls.js retains its upstream license in `vendor/hls-LICENSE.txt`; this repository does not grant rights to third-party channel content.
+
+## HTTP HLS relay
+
+Hostinger runs `relay.php` with PHP/cURL; this is no longer a strictly static-only deployment. The PHP user must be able to create a private signing key and six lock files in the parent of the document root. No credentials are shipped in Git or the ZIP.
+
+- Entry requests use a published HTTP channel ID, never an arbitrary URL. Nested playlist, segment and key URLs are signed. Catalog removal revokes access; signed URLs remain stable for long-running live playlists.
+- Redirects/nested resources stay on the source hostname, with original/80/443 ports only. Public IPv4 destinations are validated and pinned, TLS verification remains enabled, and private/reserved addresses are denied. Cross-CDN resource hosts are intentionally unsupported until explicitly reviewed.
+- Rewrites playlist URI lines and quoted URI attributes (variants, segments, audio, initialization maps and keys). Supports single byte ranges. Not a transcoder, DRM bypass or arbitrary-file proxy.
+- Resource limits: six simultaneous upstream requests globally, 18-second request timeout, 16 MiB per resource, 1 MiB playlists, bounded redirects. Busy requests return 503. Shared-hosting capacity and bandwidth are not load-certified; this is not a promise of unlimited viewers.
+- HTTP upstream traffic remains unencrypted between Hostinger and the broadcaster. The browser-to-Hostinger connection is HTTPS.
+- `/proxy` remains disabled. `/relay.php?status=1` reports PHP/cURL availability only. Verify real advancing video time, not just a successful playlist response.
