@@ -27,3 +27,27 @@ The Mac LaunchAgent `com.derleng.tv-bot` is preserved but disabled/booted out at
 ## Validation
 
 Hostinger PHP 8.3.36/cURL: 57 preview/parity fixtures, menu delivery, category callback delivery despite expired ack, repeated and concurrent update suppression, out-of-order receipt recording, invalid-header/body and private-file denial checks. Existing 27 Python + 19 browser tests remain passing. Final cutover/live delivery results are recorded in workspace evidence and NeangCore handover.
+
+## In-place channel selection (2026-11-10)
+New category rows use `pick_<cid>` callbacks, not Mini App launch buttons. The
+webhook validates the private chat/from identity and catalog ID, then atomically
+stores the newest update in private `.derleng-tv-bot/selections/<uid>.json`.
+`bot-selection.php` validates Telegram's signed initData (24-hour auth lifetime,
+60-second future skew) before returning that user's selection (15-minute TTL).
+The active Mini App polls every five seconds and on resume. Duplicate versions,
+older explicit-link selections and selections predating a local click do not
+restart/override playback. Hidden/deactivated views defer switching until resumed.
+
+Telegram controls window foregrounding: callbacks cannot force an existing iOS
+WebView to reopen. Users return to their open Mini App. When no recent heartbeat
+exists, the bot attempts to send an explicit Open TV launch fallback. Selection is
+saved before this optional notification; delivery of the hint is not guaranteed.
+Old sent bot messages retain old launch buttons: request `/start` and reopen the
+Mini App once after upgrading. Browser-only sessions have no Telegram identity
+and do not poll. Expired authentication stops sync without interrupting video;
+close/reopen the Mini App to refresh it. Multiple open views for the same Telegram
+user can read the same selection; this is not an exclusive single-window API.
+
+Deploy `bot-selection.php` and `bot-webhook.php` together using the release builder.
+The Mac poller remains disabled. Private selections contain IDs/timestamps, not
+initData or tokens. Do not expose this directory or accept a client-supplied user ID.
