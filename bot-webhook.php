@@ -1,8 +1,6 @@
 <?php
 /** Telegram webhook. Secrets/receipt ledger live outside public_html. */
 declare(strict_types=1);
-define('DERLENG_SELECTION_LIBRARY_ONLY',true);
-require_once __DIR__.'/bot-selection.php';
 const TV_APP = 'https://tv.derlenghub.com';
 function tv_categories(): array { return json_decode(file_get_contents(__DIR__.'/bot-menu.json'), true, 32, JSON_THROW_ON_ERROR); }
 function tv_catalog(): array {
@@ -30,7 +28,7 @@ function tv_category_view(array $rows,string $cat,int $page): array {
     $rows=tv_filter($rows,$cat);$total=count($rows);$pages=max(1,(int)ceil($total/8));$page=max(0,min($page,$pages-1));$kb=[];
     foreach(array_slice($rows,$page*8,8) as $c) {
         $chars=preg_split('//u',$c['n'],-1,PREG_SPLIT_NO_EMPTY);$name=implode('',array_slice($chars,0,30)).(count($chars)>30?'…':'');
-        $kb[]=[['text'=>'▶️ '.$name,'callback_data'=>'pick_'.$c['id']]];
+        $kb[]=[['text'=>'▶️ '.$name,'web_app'=>['url'=>TV_APP.'/?cid='.rawurlencode($c['id'])]]];
     }
     $nav=[];if($page>0)$nav[]=['text'=>'◀️ ថយក្រោយ','callback_data'=>'cat_'.$cat.'_'.($page-1)];
     $nav[]=['text'=>'📄 ទំព័រ '.($page+1).'/'.$pages,'callback_data'=>'cat_'.$cat.'_'.$page];
@@ -120,26 +118,7 @@ try {
     if(($state[$id]['status']??'')==='sending') {
         $state[$id]['status']='uncertain';$save();tv_reply(200,['ok'=>true,'uncertain'=>true]);
     }
-    $rows=tv_catalog();
-    $cb=$u['callback_query']??null;
-    if(is_array($cb)&&preg_match('/^pick_([a-zA-Z0-9_-]{8,64})$/D',(string)($cb['data']??''),$match)) {
-        $chat=$cb['message']['chat']??[];$uid=$cb['from']['id']??null;
-        $channel=null;foreach($rows as $c)if($c['id']===$match[1]){$channel=$c;break;}
-        if(($chat['type']??'')!=='private'||!is_int($uid)||$uid<=0||$uid!==($chat['id']??null)||$channel===null) {
-            $state[$id]=['status'=>'ignored','at'=>time()];$save();tv_reply(200,['ok'=>true]);
-        }
-        // Persist before responding; Telegram retries cannot replace a newer selection.
-        $selection=tv_selection_state($uid,['cid'=>$channel['id'],'update_id'=>$u['update_id']]);
-        $state[$id]=['status'=>'done','method'=>'selectChannel','at'=>time()];$save();
-        $active=($selection['seen_at']??0)>=time()-120;
-        tv_api($config['token'],'answerCallbackQuery',['callback_query_id'=>$cb['id'],'text'=>'បានជ្រើសរើស។ ត្រឡប់ទៅ Mini App ដើម្បីទស្សនា។']);
-        if(!$active) {
-            tv_api($config['token'],'sendMessage',['chat_id'=>$uid,'text'=>'បានជ្រើសរើស '.$channel['n']."\n".'ត្រឡប់ទៅ Mini App ដែលបានបើក ឬចុចបើក TV ខាងក្រោម៖',
-                'reply_markup'=>['inline_keyboard'=>[[['text'=>'▶️ បើក TV','web_app'=>['url'=>TV_APP.'/?cid='.rawurlencode($channel['id'])]]]]]]);
-        }
-        tv_reply(200,['ok'=>true,'status'=>'done']);
-    }
-    $plan=tv_plan($u,$rows);
+    $plan=tv_plan($u,tv_catalog());
     if($plan===null){$state[$id]=['status'=>'ignored','at'=>time()];$save();tv_reply(200,['ok'=>true]);}
     if(isset($u['callback_query']['id']))tv_api($config['token'],'answerCallbackQuery',['callback_query_id'=>$u['callback_query']['id']]);
     $attempt=(int)($state[$id]['attempts']??0)+1;

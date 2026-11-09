@@ -19,7 +19,7 @@ def build_release(destination=None):
     with tempfile.TemporaryDirectory(prefix='derleng-tv-release-') as td:
         stage = Path(td)/'site'
         report = build_ui.build_all(stage)
-        for name in ('relay.php','bot-webhook.php','bot-selection.php','bot-menu.json','logo.png','logo.svg','favicon.png','start_banner.png','welcome_banner.png'):
+        for name in ('relay.php','bot-webhook.php','bot-menu.json','logo.png','logo.svg','favicon.png','start_banner.png','welcome_banner.png'):
             shutil.copyfile(BASE/name, stage/name)
         (stage/'vendor').mkdir()
         for name in ('hls-1.7.4.min.js','hls-LICENSE.txt'):

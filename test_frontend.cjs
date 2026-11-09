@@ -323,58 +323,6 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(()=>!document.body.classList.contains('is-fullscreen'));
     assert(await page.locator('#channel-list').isVisible());
   });
-  await scenario('authenticated selection switches in-place and repeated version does not restart', async page => {
-    let pick = null;
-    await page.addInitScript(() => { window.Telegram = {WebApp:{initData:'signed-fixture'}}; });
-    await page.route('**/bot-selection.php', route => route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,auth_date:1,selection:pick})}));
-    await open(page);
-    const target = catalog.find(c => c.id !== bootstrap[0].id);
-    pick = {cid:target.id,version:'101',at:2};
-    await page.evaluate(() => syncBotSelection());
-    assert.equal(await page.evaluate(() => currentChannel.id),target.id);
-    assert.equal(new URL(page.url()).searchParams.get('cid'),target.id);
-    const generation = await page.evaluate(() => playSessionId);
-    await page.evaluate(() => syncBotSelection());
-    assert.equal(await page.evaluate(() => playSessionId),generation);
-    await page.evaluate(() => handleNavigation(false));
-    assert.equal(await page.evaluate(() => playSessionId),generation);
-  });
-  await scenario('explicit channel link wins older bot selection', async page => {
-    await page.addInitScript(() => { window.Telegram = {WebApp:{initData:'signed-fixture'}}; });
-    await page.route('**/bot-selection.php', route => route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,auth_date:100,selection:{cid:bootstrap[0].id,version:'102',at:99}})}));
-    await open(page,'?cid='+absent.id);
-    await page.waitForFunction(() => fullCatalogLoaded && currentChannel);
-    await page.evaluate(() => syncBotSelection());
-    assert.equal(await page.evaluate(() => currentChannel.id),absent.id);
-  });
-  await scenario('ordinary browser makes no authenticated selection requests', async page => {
-    let calls=0;
-    await page.route('**/bot-selection.php', route => {calls++;return route.fulfill({status:401,body:'{}'});});
-    await open(page);
-    await page.evaluate(() => syncBotSelection());
-    assert.equal(calls,0);
-  });
-  await scenario('minimized Telegram defers selection until activated', async page => {
-    await page.addInitScript(() => { window.__tgEvents={}; window.Telegram={WebApp:{initData:'fixture',onEvent:(n,f)=>window.__tgEvents[n]=f}}; });
-    await page.route('**/bot-selection.php', route=>route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,auth_date:1,selection:{cid:absent.id,version:'201',at:2}})}));
-    await open(page);
-    await page.waitForFunction(()=>fullCatalogLoaded);
-    await page.evaluate(()=>{ window.__tgEvents.deactivated(); });
-    const prior=await page.evaluate(()=>currentChannel?.id);
-    await page.evaluate(()=>syncBotSelection());
-    assert.equal(await page.evaluate(()=>currentChannel?.id),prior);
-    await page.evaluate(()=>window.__tgEvents.activated());
-    await page.waitForFunction(id=>currentChannel?.id===id,absent.id);
-  });
-  await scenario('older selection does not override newer local channel choice', async page => {
-    await page.addInitScript(()=>{window.Telegram={WebApp:{initData:'fixture'}};});
-    await page.route('**/bot-selection.php',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,auth_date:1,selection:{cid:absent.id,version:'301',at:2}})}));
-    await open(page); await page.waitForFunction(()=>fullCatalogLoaded);
-    await page.evaluate(()=>{localChoiceAt=3;});
-    const prior=await page.evaluate(()=>currentChannel?.id);
-    await page.evaluate(()=>syncBotSelection());
-    assert.equal(await page.evaluate(()=>currentChannel?.id),prior);
-  });
   await browser.close();
   await new Promise(resolve => server.close(resolve));
   console.log(JSON.stringify({type:'synthetic-browser-regression', results}, null, 2));

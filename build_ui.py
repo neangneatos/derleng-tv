@@ -1216,9 +1216,7 @@ __HEAD_LINKS__
       setPlayerState('STREAM_UNAVAILABLE', reasonMsg);
     }
 
-    let channelIntent = 0, localChoiceAt = 0;
     function play(idx, isRetry = false) {
-      if (!isRetry) channelIntent++;
       if (!window.activeFiltered || window.activeFiltered.length === 0) {
         window.activeFiltered = channels.filter(ch => (ch.g === 'Cambodia' || ch.c === 'KH'));
       }
@@ -1469,12 +1467,12 @@ __HEAD_LINKS__
 
     listEl.addEventListener('click', event => {
       const row = event.target.closest('.channel-row');
-      if (row) { localChoiceAt = Math.floor(Date.now()/1000); play(Number(row.dataset.idx)); }
+      if (row) play(Number(row.dataset.idx));
     });
     listEl.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
         const row = event.target.closest('.channel-row');
-        if (row) { event.preventDefault(); localChoiceAt = Math.floor(Date.now()/1000); play(Number(row.dataset.idx)); }
+        if (row) { event.preventDefault(); play(Number(row.dataset.idx)); }
       }
     });
 
@@ -1874,55 +1872,6 @@ __HEAD_LINKS__
         }, 250);
       }
     }
-
-    // Bot callbacks select; only signed Telegram initData can read this user's state.
-    let selectionBusy = false, selectionVersion = -1, rejectedInit = '';
-    let selectionActive = true, selectionSDK = null;
-    const explicitInitialChannel = !!(getParam('cid') || getParam('name') || getParam('ch'));
-    async function syncBotSelection() {
-      const sdk = window.Telegram?.WebApp;
-      if (sdk?.onEvent && selectionSDK !== sdk) {
-        selectionSDK = sdk;
-        sdk.onEvent('activated', () => { selectionActive = true; syncBotSelection(); });
-        sdk.onEvent('deactivated', () => { selectionActive = false; });
-      }
-      const initData = sdk?.initData;
-      if (!selectionActive || sdk?.isActive === false || document.hidden || selectionBusy || !initData || initData === rejectedInit) return;
-      selectionBusy = true;
-      const intent = channelIntent;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      try {
-        const response = await fetch('bot-selection.php', {method:'POST', cache:'no-store',
-          headers:{'Content-Type':'application/json'}, body:JSON.stringify({init_data:initData}), signal:controller.signal});
-        if (response.status === 401) { rejectedInit = initData; return; }
-        if (!response.ok) return;
-        const data = await response.json(), pick = data.selection;
-        if (!selectionActive || sdk?.isActive === false || document.hidden) return;
-        if (!data.ok || !pick || !/^\d+$/.test(String(pick.version)) || typeof pick.cid !== 'string') return;
-        const version = Number(pick.version);
-        if (!Number.isSafeInteger(version) || version <= selectionVersion) return;
-        if (pick.at <= localChoiceAt || intent !== channelIntent || (explicitInitialChannel && pick.at < data.auth_date)) {
-          selectionVersion = version; return;
-        }
-        if (!channels.some(ch => ch.id === pick.cid)) {
-          if (fullCatalogLoaded) selectionVersion = version;
-          return; // Full catalog may still be loading; don't consume the selection yet.
-        }
-        selectionVersion = version;
-        const url = new URL(location.href);
-        ['name','ch','cat'].forEach(key => url.searchParams.delete(key));
-        url.searchParams.set('cid', pick.cid);
-        history.replaceState(null, '', url);
-        clearTimeout(searchTimer); searchInput.value = '';
-        handleNavigation(true);
-      } catch (_) { /* A sync outage must never interrupt current video. */ }
-      finally { clearTimeout(timeout); selectionBusy = false; }
-    }
-    setInterval(syncBotSelection, 5000);
-    setTimeout(syncBotSelection, 500);
-    window.addEventListener('pageshow', syncBotSelection);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncBotSelection(); });
 
     handleNavigation();
 

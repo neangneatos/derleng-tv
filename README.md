@@ -119,7 +119,7 @@ npx playwright install chromium
 npm test
 ```
 
-The current revision passes **27 Python tests and 24 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
+The current revision passes **27 Python tests and 19 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
 
 ## Deploy to Hostinger Business
 
@@ -161,7 +161,7 @@ The Mini App menu URL is `https://tv.derlenghub.com/`; the historical tunnel URL
 | `build_release.py` | Static ZIP, manifest, CSP and hosting rules |
 | `channels.json` | Public sanitized source snapshot |
 | `server.py` | Loopback development preview |
-| `bot-webhook.php`, `bot-selection.php`, `bot-menu.json` | Production hosted Telegram handler and menu |
+| `bot-webhook.php`, `bot-menu.json` | Production hosted Telegram handler and menu |
 | `bot.py`, `run.sh` | Preserved polling implementation; disabled in production |
 | `start_tv.py` | Legacy/development supervisor |
 | `test_*.py`, `test_frontend.cjs` | Offline/synthetic regressions |
