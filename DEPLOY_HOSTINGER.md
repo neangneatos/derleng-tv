@@ -8,7 +8,7 @@ Browser → Hostinger page/catalog → direct HTTPS HLS origins, or same-origin 
 
 The catalog is a **compatibility-filtered, unverified availability catalog**, not a guarantee that 6,064 channels work. HTTP and HTTPS HLS streams are accepted, including nonstandard ports. HTTP HLS playback uses the HTTPS PHP relay to avoid browser mixed-content requests. DASH/other unsupported formats and unapproved URL parameters remain excluded. CORS on manifest, segment and key origins, codecs, redirects and regional availability still control playback. A Hostinger CORS header cannot repair an upstream's policy. A bounded PHP relay runs on the Business account for HTTP HLS; no transcoding runs. See README for origin and capacity limits.
 
-Python polling bot and supervisor are **not deployed to Business hosting**. The Telegram global menu button can open this static Mini App even when the polling worker is off. Interactive bot commands need the separate Python worker; no new worker has been provisioned by this build.
+Telegram commands run through `bot-webhook.php` on Hostinger PHP/cURL. The Python polling bot and supervisor are rollback/development only; the Mac LaunchAgent is disabled. Preserve the private `.derleng-tv-bot` configuration/receipts directory outside public_html across deployments. See [webhook operations](docs/telegram-webhook.md).
 
 ## Build and validate
 
@@ -49,7 +49,9 @@ No deployment command is run by either build or tests. Install browser tests wit
 8. Confirm Telegram Web framing, iOS/Android native playback/fullscreen and real channels. Automated Chromium is not certification of physical Telegram clients.
 9. Only after public verification, set Telegram menu to `https://tv.derlenghub.com`. Preserve prior URL for rollback. Do not start the old tunnel supervisor for this static production deployment.
 
-## Optional bot worker
+## Legacy bot worker — rollback only
+
+Production uses the PHP webhook. Delete the webhook without dropping pending updates before re-enabling this poller; never run both.
 
 Use a supported Python release (3.11+ recommended), keep `.env` private (0600), set `TELEGRAM_WEBAPP_URL=https://tv.derlenghub.com`, and deploy the matching published `channels_public.json` alongside the worker. Default path is `dist/hostinger/channels_public.json`; `DERLENG_CATALOG_FILE` overrides it. Run `python3 bot.py` under the existing worker's proper process manager. Do not run multiple pollers for one token. No raw stream URL is placed in bot links; they use `?cid=<stable-id>`.
 

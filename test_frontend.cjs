@@ -260,6 +260,69 @@ const server = http.createServer((req, res) => {
     await rows.nth(1).click();
     assert.equal(await page.evaluate(() => window.__instances.at(-1).source), expected);
   });
+  await scenario('responsive layouts keep player and channels accessible from phone to 4K', async page => {
+    await open(page);
+    for (const [width, height] of [[320,480],[320,568],[390,844],[568,320],[844,390],[768,1024],[820,1180],[1024,768],[1366,768],[1440,900],[1920,1080],[3840,2160]]) {
+      await page.setViewportSize({width,height});
+      const layout = await page.evaluate(() => {
+        const box = id => { const r=document.querySelector(id).getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height,b:r.bottom,right:r.right}; };
+        return {overflow:document.documentElement.scrollWidth > innerWidth + 1, player:box('#player-wrap'), list:box('#channel-list'), video:box('.video-viewport'), controls:box('#controls')};
+      });
+      assert(!layout.overflow, `Horizontal overflow at ${width}x${height}`);
+      assert(layout.list.h >= 80, `Channel list too short at ${width}x${height}: ${JSON.stringify(layout)}`);
+      assert(layout.list.b <= height + 1, `Clipped list at ${width}x${height}`);
+      assert(layout.video.h >= 95, `Video collapsed at ${width}x${height}`);
+      if (width >= 1000 || (width >= 560 && width > height)) {
+        assert(layout.list.x >= layout.player.right - 1, `Missing split layout at ${width}x${height}`);
+      }
+      if (width >= 1366) assert(layout.video.h > 240, 'Desktop video still phone-sized');
+      if (process.env.RESPONSIVE_SCREENSHOTS && [390,768,1366,1920].includes(width)) {
+        await page.screenshot({path:path.join(process.env.RESPONSIVE_SCREENSHOTS, `layout-${width}x${height}.png`)});
+      }
+    }
+  });
+  await scenario('keyboard category activation, remote arrows and fullscreen exit remain usable', async page => {
+    await page.setViewportSize({width:1920,height:1080});
+    await open(page);
+    const button=page.locator('[data-cat="Music"]');
+    await button.focus();
+    await page.keyboard.press('Enter');
+    assert(await button.evaluate(el=>el.classList.contains('active')));
+    assert.equal(await page.evaluate(()=>window.__media.paused),false, 'Category Enter must not toggle playback');
+    await page.keyboard.press('ArrowRight');
+    assert.notEqual(await page.evaluate(()=>document.activeElement.dataset.cat),'Music');
+    await page.locator('.channel-row').first().focus();
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.idx),'1');
+    await page.evaluate(()=>document.body.classList.add('is-fullscreen'));
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('is-fullscreen')),false);
+    assert(await page.locator('#channel-list').isVisible());
+  });
+  await scenario('fullscreen fallback fills every viewport and Escape restores the layout', async page => {
+    await open(page);
+    await page.evaluate(()=>{document.querySelector('#player-wrap').requestFullscreen=undefined; document.querySelector('#player-wrap').webkitRequestFullscreen=undefined; document.querySelector('#player-wrap').webkitRequestFullScreen=undefined;});
+    for (const [width,height] of [[320,568],[844,390],[768,1024],[1024,768],[1366,768],[1920,1080],[3840,2160]]) {
+      await page.setViewportSize({width,height});
+      await page.locator('#fullscreen-btn').click();
+      const box=await page.locator('.video-viewport').boundingBox();
+      assert(Math.abs(box.width-width)<=1 && Math.abs(box.height-height)<=1, `Fullscreen not filled at ${width}x${height}: ${JSON.stringify(box)}`);
+      assert.equal(await page.locator('#channel-list').isVisible(),false);
+      await page.locator('#fullscreen-btn').focus();
+      assert.equal(await page.locator('.now-playing-bar').evaluate(el=>getComputedStyle(el).opacity),'1');
+      await page.keyboard.press('Escape');
+      assert(await page.locator('#channel-list').isVisible());
+    }
+  });
+  await scenario('native fullscreen exit clears cinema mode and restores browsing', async page => {
+    await page.setViewportSize({width:1366,height:768});
+    await open(page);
+    await page.locator('#fullscreen-btn').click();
+    await page.waitForFunction(()=>!!document.fullscreenElement);
+    await page.evaluate(()=>document.exitFullscreen());
+    await page.waitForFunction(()=>!document.body.classList.contains('is-fullscreen'));
+    assert(await page.locator('#channel-list').isVisible());
+  });
   await browser.close();
   await new Promise(resolve => server.close(resolve));
   console.log(JSON.stringify({type:'synthetic-browser-regression', results}, null, 2));

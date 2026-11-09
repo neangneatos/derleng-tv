@@ -66,13 +66,14 @@ The UI initially embeds a small bootstrap selection, then fetches the full versi
 Telegram WebView / browser
         |
         v
-Hostinger: HTML + catalog + Hls.js + PHP HTTP-HLS relay
+Hostinger: HTML + catalog + Hls.js + PHP HTTP-HLS relay + Telegram webhook
         |
         v
 HTTPS origins: direct playback
 HTTP origins: fetched server-side by the HTTPS relay
 
-Optional separate Python polling worker -> Telegram Bot API
+Telegram -> Hostinger PHP webhook -> Telegram Bot API
+Mac Python polling worker: preserved, disabled (rollback only)
 ```
 
 - Khmer UI, categories/search, progressive channel rendering and stable `?cid=<channel-id>` links.
@@ -82,7 +83,7 @@ Optional separate Python polling worker -> Telegram Bot API
 - Generated `.htaccess` restricts public files, disables `/proxy`, and provides security/cache headers.
 - `/health.json` and `/healthz` indicate a static release is present; they do not certify streams or the bot.
 
-Hostinger serves the **Mini App**, not the Python bot or supervisor. Interactive bot commands require a separate supported Python worker. Streaming depends on upstream CORS, codecs, connectivity, region restrictions and availability. Only use streams you are authorized to access/distribute.
+Hostinger serves the **Mini App and PHP Telegram webhook**. Interactive commands no longer depend on the Mac. The old Python poller is disabled and preserved only for rollback. Streaming depends on upstream CORS, codecs, connectivity, region restrictions and availability. Only use streams you are authorized to access/distribute.
 
 ## Quick start
 
@@ -118,7 +119,7 @@ npx playwright install chromium
 npm test
 ```
 
-The current revision passes **27 Python tests and 15 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
+The current revision passes **27 Python tests and 19 synthetic Chromium scenarios** locally. Synthetic scenarios do not establish real upstream playback. CI builds/tests and uploads a release artifact; it does **not** deploy to Hostinger or change Telegram settings. The old optional `test_suite.py --benchmarks` path relies on a local historical snapshot and is not part of portable validation.
 
 ## Deploy to Hostinger Business
 
@@ -133,29 +134,24 @@ Follow [DEPLOY_HOSTINGER.md](DEPLOY_HOSTINGER.md) for detailed deployment, verif
 
 A GitHub push updates source and runs CI only. It does not automatically update the live Hostinger website.
 
-## Optional Telegram worker
+## Telegram bot — hosted webhook
 
-```sh
-cp .env.example .env
-chmod 600 .env
-# Set TELEGRAM_BOT_TOKEN in .env; never commit it.
-# Keep TELEGRAM_WEBAPP_URL and MINI_APP_URL at https://tv.derlenghub.com
-python3 build_release.py
-./run.sh
-```
+`@derlengtvbot` now receives commands through `https://tv.derlenghub.com/bot-webhook.php`. Hostinger PHP/cURL handles menus, categories, pagination and Mini App links even when the Mac is off.
 
-Run only one poller per token, on a separate always-on Python host. The worker defaults to `dist/hostinger/channels_public.json`; `DERLENG_CATALOG_FILE` can override this. `start_tv.py` is a legacy/development supervisor, not the production static-site launcher.
+Read [webhook operations and rollback](docs/telegram-webhook.md). Credentials and update receipts live outside the public root; no token or webhook secret is bundled. The Mac LaunchAgent remains installed but disabled/unloaded. Do not start it while the webhook is registered.
 
-**Known unresolved items from deployment:** Telegram accepted the menu update but read-back still returned the previous tunnel URL; menu migration is not certified. No production polling worker was started by the static deployment. Physical Telegram iOS/Android validation and a 24-hour soak remain outstanding. Earlier live Chromium checks played EAC News and Apsara; TVK did not progress within the observation window. No all-channel availability guarantee is made.
+Hosted validation passed 57 command/menu fixtures, menu and category delivery, duplicate/concurrent update suppression, and rejection of unauthenticated requests. Final hosted delivery succeeded with the Mac worker stopped. The test injected an authenticated synthetic update; physical Mac power-off and user-originated Telegram round-trip were not used as evidence. Telegram webhook read-back shows the expected URL, no queued updates and no reported error at cutover.
+
+The Mini App menu URL is `https://tv.derlenghub.com/`; the historical tunnel URL issue is resolved. Physical-device/fullscreen testing and a 24-hour soak remain outstanding; no all-channel availability guarantee is made.
 
 ## Next implementation priorities
 
-1. Resolve and read back the Telegram menu URL; confirm actual device launch.
+1. Monitor hosted webhook delivery errors and confirm user-originated command round-trips.
 2. Qualify a smaller reliably playable channel set using timestamped region/device checks.
 3. Review excluded URLs individually; add only supported, authorized, non-sensitive sources. Do not restore the unrestricted proxy.
 4. Add automated scheduled catalog validation and freshness reporting, distinct from static-site uptime.
 5. Complete physical-device/fullscreen checks and soak testing.
-6. If interactive bot operations are needed, provision a separate worker with persistent cursor/idempotency and monitoring.
+6. Monitor webhook receipt failures/uncertain deliveries and upstream stream health.
 
 ## Repository map
 
@@ -165,7 +161,8 @@ Run only one poller per token, on a separate always-on Python host. The worker d
 | `build_release.py` | Static ZIP, manifest, CSP and hosting rules |
 | `channels.json` | Public sanitized source snapshot |
 | `server.py` | Loopback development preview |
-| `bot.py`, `run.sh` | Optional external Telegram polling worker |
+| `bot-webhook.php`, `bot-menu.json` | Production hosted Telegram handler and menu |
+| `bot.py`, `run.sh` | Preserved polling implementation; disabled in production |
 | `start_tv.py` | Legacy/development supervisor |
 | `test_*.py`, `test_frontend.cjs` | Offline/synthetic regressions |
 | `vendor/` | Pinned Hls.js and upstream license |

@@ -73,7 +73,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>DERLENG TV - ទូរទស្សន៍ផ្សាយផ្ទាល់</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="logo.png">
@@ -352,8 +352,6 @@ __HEAD_LINKS__
 
     #player-wrap:fullscreen,
     #player-wrap:-webkit-full-screen,
-    #player-wrap:-moz-full-screen,
-    #player-wrap:-ms-fullscreen,
     body.is-fullscreen #player-wrap {
       position: fixed !important;
       top: 0 !important;
@@ -379,7 +377,9 @@ __HEAD_LINKS__
     body.is-fullscreen #player-wrap .video-viewport {
       width: 100vw !important;
       height: 100vh !important;
+      height: 100dvh !important;
       max-height: 100vh !important;
+      max-height: 100dvh !important;
       aspect-ratio: auto !important;
       background: #000 !important;
     }
@@ -389,6 +389,7 @@ __HEAD_LINKS__
     body.is-fullscreen #player-wrap video {
       width: 100vw !important;
       height: 100vh !important;
+      height: 100dvh !important;
       object-fit: contain !important;
       background: #000 !important;
     }
@@ -403,12 +404,13 @@ __HEAD_LINKS__
       background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%) !important;
       border-bottom: none !important;
       z-index: 100000000 !important;
-      padding: 12px 20px !important;
+      padding: 12px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)) !important;
       opacity: 0 !important;
       pointer-events: none !important;
       transition: opacity 0.3s ease !important;
     }
 
+    body.is-fullscreen #player-wrap .now-playing-bar:focus-within,
     #player-wrap:fullscreen:hover .now-playing-bar,
     #player-wrap:-webkit-full-screen:hover .now-playing-bar,
     body.is-fullscreen #player-wrap:hover .now-playing-bar,
@@ -422,49 +424,6 @@ __HEAD_LINKS__
     #player-wrap.hide-cursor,
     #player-wrap.hide-cursor * {
       cursor: none !important;
-    }
-
-    @media (orientation: landscape) and (max-height: 580px) {
-      body { overflow: hidden !important; }
-      .brand-header, #controls, .list-header, #channel-list { display: none !important; }
-      #player-wrap {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        z-index: 999999 !important;
-        background: #000 !important;
-      }
-      .video-viewport {
-        width: 100vw !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        aspect-ratio: auto !important;
-      }
-      video {
-        width: 100vw !important;
-        height: 100vh !important;
-        object-fit: contain !important;
-      }
-      .now-playing-bar {
-        position: absolute !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%) !important;
-        border-bottom: none !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        transition: opacity 0.3s ease;
-        z-index: 1000000 !important;
-      }
-      #player-wrap:hover .now-playing-bar,
-      #player-wrap:active .now-playing-bar,
-      .now-playing-bar.show-overlay {
-        opacity: 1 !important;
-        pointer-events: auto !important;
-      }
     }
 
     /* Player Status & Now Playing Bar */
@@ -810,6 +769,71 @@ __HEAD_LINKS__
       font-size: 32px;
       margin-bottom: 8px;
       opacity: 0.6;
+    }
+
+    /* Responsive layout: CSS Grid needs no extra runtime or device detection. */
+    body { padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+    #channel-list, #controls, #player-wrap { min-width: 0; min-height: 0; }
+    #search { font-size: 16px; min-height: 44px; }
+    .cat-btn { flex-shrink: 0; min-height: 44px; }
+    .action-btn, .clear-search-btn { min-width: 44px; min-height: 44px; }
+    .channel-row { min-height: 64px; }
+    .video-viewport { max-height: min(36dvh, 420px); }
+    button:focus-visible, .channel-row:focus-visible, video:focus-visible {
+      outline: 3px solid var(--brand-accent); outline-offset: -3px;
+      box-shadow: inset 0 0 0 5px #031024;
+    }
+    .now-playing-bar:focus-within { opacity: 1 !important; pointer-events: auto !important; }
+    @media (min-width: 600px) and (min-height: 700px) {
+      #channel-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+      .channel-row { min-width: 0; }
+    }
+    @media (min-width: 1000px), (min-width: 560px) and (orientation: landscape) {
+      body:not(.is-fullscreen) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(320px, 34vw, 540px);
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        grid-template-areas: 'brand brand' 'player controls' 'player heading' 'player channels';
+      }
+      .brand-header { grid-area: brand; }
+      #player-wrap { grid-area: player; align-self: stretch; justify-content: center; }
+      .video-viewport { max-height: calc(100dvh - 150px); aspect-ratio: 16 / 9; }
+      #controls { grid-area: controls; }
+      .list-header { grid-area: heading; }
+      #channel-list { grid-area: channels; display: flex; padding-bottom: 16px; }
+      #cat-bar { flex-wrap: wrap; max-height: 150px; overflow-y: auto; }
+      .cat-btn { font-size: 13px; }
+      .now-playing-bar { flex-shrink: 0; }
+    }
+    @media (max-height: 600px) and (min-width: 560px) {
+      .brand-header { padding-top: 4px; padding-bottom: 4px; }
+      #cat-bar { flex-wrap: nowrap; max-height: none; }
+      .video-viewport { max-height: calc(100dvh - 130px); }
+    }
+    @media (min-width: 1800px) {
+      body:not(.is-fullscreen) { grid-template-columns: minmax(0, 1fr) clamp(540px, 32vw, 900px); }
+      .brand-header { padding: 20px 28px; }
+      .brand-logo-img { width: 52px; height: 52px; }
+      .brand-name { font-size: 28px; }
+      #controls { padding: 20px 24px; }
+      #search, #search::placeholder, .cat-btn { font-size: clamp(18px, 1vw, 32px); }
+      .cat-btn { min-height: 56px; padding: 10px 18px; }
+      #cat-bar { max-height: 240px; gap: 10px; }
+      #channel-list { gap: 12px; }
+      .channel-row { min-height: 90px; padding: 18px; }
+      .ch-name { font-size: clamp(20px, 1.1vw, 36px); }
+      .ch-meta-row, .list-header { font-size: clamp(14px, .8vw, 26px); }
+      .ch-icon-badge { width: 56px; height: 56px; }
+      .action-btn { min-width: 56px; min-height: 56px; font-size: 24px; }
+    }
+    @media (max-width: 359px) {
+      .brand-header { padding: 8px; gap: 6px; }
+      .brand-sub { display: none; }
+      .live-badge { font-size: 10px; padding: 5px; }
+      .video-viewport { max-height: 25dvh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
 </head>
@@ -1635,13 +1659,19 @@ __HEAD_LINKS__
     ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
       document.addEventListener(evt, () => {
         const hasNativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-        if (!hasNativeFs && !document.body.classList.contains('is-fullscreen') && !(video && video.webkitDisplayingFullscreen)) {
+        if (!hasNativeFs && !(video && video.webkitDisplayingFullscreen) && !window.Telegram?.WebApp?.isFullscreen) {
           syncFullscreenUI(false);
         } else if (hasNativeFs) {
           syncFullscreenUI(true);
         }
       });
     });
+
+    if (window.Telegram?.WebApp?.onEvent) {
+      window.Telegram.WebApp.onEvent('fullscreenChanged', () => {
+        syncFullscreenUI(!!window.Telegram.WebApp.isFullscreen || !!document.fullscreenElement || !!video.webkitDisplayingFullscreen);
+      });
+    }
 
     wrap.addEventListener('dblclick', (e) => {
       if (e.target.closest('.action-btn') || e.target.closest('.status-btn')) return;
@@ -1660,6 +1690,7 @@ __HEAD_LINKS__
       }
     }
 
+    wrap.addEventListener('focusin', resetControlsTimeout);
     wrap.addEventListener('mousemove', resetControlsTimeout);
     wrap.addEventListener('touchstart', resetControlsTimeout, { passive: true });
     wrap.addEventListener('click', (e) => {
@@ -1690,6 +1721,7 @@ __HEAD_LINKS__
         toggleFullScreen();
         return;
       }
+      if (e.defaultPrevented || (e.target.closest && e.target.closest('button, [role=button], a'))) return;
       const isPlayPauseKey = (e.key === ' ' || e.code === 'Space' || e.keyCode === 13 || e.keyCode === 65385 || e.keyCode === 179 || e.keyCode === 415);
       if (isPlayPauseKey) {
         e.preventDefault();
@@ -1704,6 +1736,30 @@ __HEAD_LINKS__
         resetControlsTimeout();
         return;
       }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      if (e.target.matches('input, textarea, video')) return;
+      const items = Array.from(document.querySelectorAll('button, .channel-row[tabindex], input'))
+        .filter(el => !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+      if (!items.length) return;
+      const active = document.activeElement;
+      if (!items.includes(active)) { e.preventDefault(); items[0].focus(); return; }
+      const rect = active.getBoundingClientRect();
+      const x = rect.x + rect.width / 2, y = rect.y + rect.height / 2;
+      const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+      const sign = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1;
+      let best = null, score = Infinity;
+      items.forEach(el => {
+        if (el === active) return;
+        const r = el.getBoundingClientRect();
+        const dx = r.x + r.width / 2 - x, dy = r.y + r.height / 2 - y;
+        const along = (horizontal ? dx : dy) * sign;
+        const across = Math.abs(horizontal ? dy : dx);
+        if (along > 2 && along + across * 3 < score) { best = el; score = along + across * 3; }
+      });
+      if (best) { e.preventDefault(); best.focus(); best.scrollIntoView({block: 'nearest', inline: 'nearest'}); }
     });
 
     function safeDecode(val) {

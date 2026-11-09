@@ -1,0 +1,29 @@
+# Hostinger Telegram webhook
+
+Production endpoint: `https://tv.derlenghub.com/bot-webhook.php`.
+Same `@derlengtvbot`, Mini App URL, categories, eight-row pagination and stable `?cid=` links.
+The handler uses PHP/cURL, not a persistent Python/Node process. `bot-menu.json` supplies category labels/order; counts and channel pages come from `channels_public.json`.
+
+## Private configuration
+
+`../.derleng-tv-bot/config.json`, relative to the public website root, holds `token` and `secret`. Parent directory mode 0700 and file 0600. Neither secret belongs in Git, the web archive, public logs or a URL. The temporary installer is omitted from the final archive and denied by final .htaccess. Do not re-enable it routinely.
+
+Incoming POSTs require Telegram's `X-Telegram-Bot-Api-Secret-Token` header. Non-POST405, missing/wrong secret403, malformed update400 and oversized body413. Only private-chat commands/callbacks are handled. Webhook configuration: `max_connections=1`, `allowed_updates=[message,callback_query]`, never drop pending updates during cutover.
+
+## Delivery state
+
+A private flock-protected atomic `receipts.json` records per-update results for 48 hours, including successful message IDs. Concurrent requests get503 to retry; completed updates are not replayed. API429/retryable failures are bounded to 5 attempts and honor retry_after. Expired callback acknowledgements do not block actual menu delivery. Definite banner rejection400 falls back to text.
+
+Ambiguous network timeout or crash after dispatch is recorded uncertain and is not blindly resent. This avoids duplicate sends but can leave a request unanswered: exactly-once delivery is not claimed. Operators should inspect private receipt statuses when diagnosing missed replies. No message bodies/token URLs are logged.
+
+## Deployment and rollback
+
+Build with `python3 build_release.py`; deploy the coherent archive including webhook PHP and bot-menu JSON. Preserve the private directory outside public_html. Use the updated task helper at workspace `outputs/tv-webhook-20261110/deploy.py`, which explicitly permits the webhook PHP file. The older relay-only helper rejects it.
+
+Check `getWebhookInfo` (URL, pending updates, errors) using approved credentials; never print the token. Telegram stops getUpdates polling while a webhook is set.
+
+The Mac LaunchAgent `com.derleng.tv-bot` is preserved but disabled/booted out at cutover. It must not be started alongside the webhook. Rollback order: call `deleteWebhook` with `drop_pending_updates=false`, enable the LaunchAgent and bootstrap its preserved plist. If restoring the prior static archive, first switch delivery back; that archive has no webhook handler. Do not delete the private config/receipts during normal rollback.
+
+## Validation
+
+Hostinger PHP 8.3.36/cURL: 57 preview/parity fixtures, menu delivery, category callback delivery despite expired ack, repeated and concurrent update suppression, out-of-order receipt recording, invalid-header/body and private-file denial checks. Existing 27 Python + 19 browser tests remain passing. Final cutover/live delivery results are recorded in workspace evidence and NeangCore handover.

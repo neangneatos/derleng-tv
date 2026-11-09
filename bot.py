@@ -183,44 +183,48 @@ def send_photo(chat_id, photo_source, caption=None, reply_markup=None):
     # 4. Fallback to standard message if image sending fails
     return send_message(chat_id, caption or '', reply_markup)
 
+# Keep order and filtering aligned with the Mini App category bar.
+CATEGORY_MENU = [
+    ('Cambodia', '🇰🇭', 'កម្ពុជា'), ('ALL', '🌍', 'ប៉ុស្តិ៍ទាំងអស់'),
+    ('Kids', '🧸', 'កុមារ'), ('Sports', '⚽', 'កីឡា'),
+    ('News', '📰', 'ព័ត៌មាន'), ('Movies', '🎬', 'ភាពយន្ត'),
+    ('Documentary', '📚', 'ឯកសារ'), ('Music', '🎵', 'តន្ត្រី'),
+    ('Education', '🎓', 'អប់រំ'), ('Religious', '🕊️', 'សាសនា'),
+    ('Business', '📈', 'ពាណិជ្ជកម្ម'), ('Lifestyle', '✨', 'របៀបរស់នៅ'),
+    ('Entertainment', '🎭', 'កម្សាន្ត'), ('General', '📺', 'ទូទៅ'),
+]
+CATEGORY_COMMANDS = {cat.lower(): cat for cat, _, _ in CATEGORY_MENU}
+
+def build_bot_commands():
+    return ([{'command': 'start', 'description': '📺 ម៉ឺនុយមេ'},
+             {'command': 'tv', 'description': '▶️ បើក DERLENG TV'}] +
+            [{'command': cat.lower(), 'description': f'{emoji} {label}'}
+             for cat, emoji, label in CATEGORY_MENU if get_category_channels(cat)] +
+            [{'command': 'stats', 'description': '📊 ស្ថិតិប៉ុស្តិ៍'},
+             {'command': 'help', 'description': '❓ ជំនួយ'}])
+
 def build_main_keyboard(app_url):
     kb = []
-    # Hero Full-Width Button
     if app_url:
         kb.append([{'text': '🚀 បើកទស្សនា DERLENG TV', 'web_app': {'url': app_url}}])
-
-    # Featured Cambodia Button
-    kb.append([{'text': '🇰🇭 ប៉ុស្តិ៍ជាតិកម្ពុជា (១២ ប៉ុស្តិ៍)', 'callback_data': 'cat_Cambodia_0'}])
-
-    # 2-Column Category Grid with Kids category
-    kb.append([
-        {'text': '🧸 កុមារ & តុក្កតា (៧០)', 'callback_data': 'cat_Kids_0'},
-        {'text': '⚽ កីឡាផ្សាយផ្ទាល់ (៨១)', 'callback_data': 'cat_Sports_0'}
-    ])
-    kb.append([
-        {'text': '📰 ព័ត៌មាន ២៤/៧ (២៥៨)', 'callback_data': 'cat_News_0'},
-        {'text': '🎬 ភាពយន្ត & កុន (២៣៣)', 'callback_data': 'cat_Movies_0'}
-    ])
-    kb.append([
-        {'text': '📚 ភាពយន្តឯកសារ (១៨)', 'callback_data': 'cat_Documentary_0'},
-        {'text': '🌍 ប៉ុស្តិ៍ផ្សាយទាំងអស់', 'callback_data': 'cat_ALL_0'}
-    ])
-    kb.append([
-        {'text': '🔍 របៀបស្វែងរក', 'callback_data': 'nav_search'},
-        {'text': '📊 ស្ថិតិប៉ុស្តិ៍', 'callback_data': 'nav_stats'}
-    ])
-
-    # Utility Row
-    kb.append([
-        {'text': '❓ ជំនួយ & របៀបមើល', 'callback_data': 'nav_help'}
-    ])
+    buttons = []
+    for cat, emoji, label in CATEGORY_MENU:
+        count = len(get_category_channels(cat))
+        if count:
+            buttons.append({'text': f'{emoji} {label} ({count:,})',
+                            'callback_data': f'cat_{cat}_0'})
+    kb.extend(buttons[i:i + 2] for i in range(0, len(buttons), 2))
+    kb.append([{'text': '🔍 របៀបស្វែងរក', 'callback_data': 'nav_search'},
+               {'text': '📊 ស្ថិតិប៉ុស្តិ៍', 'callback_data': 'nav_stats'}])
+    kb.append([{'text': '❓ ជំនួយ & របៀបមើល', 'callback_data': 'nav_help'}])
     return {'inline_keyboard': kb}
+
 
 def send_welcome_banner(chat_id):
     nl = chr(10)
     welcome_text = (
         '📺 <b>សូមស្វាគមន៍មកកាន់ DERLENG TV!</b>' + nl + nl +
-        'ទស្សនាប៉ុស្តិ៍ទូរទស្សន៍ផ្សាយបន្តផ្ទាល់ជាង ៦,១០០+ ប៉ុស្តិ៍ដោយផ្ទាល់នៅលើ Telegram រួមមានប៉ុស្តិ៍ជាតិកម្ពុជា កុមារ និងតុក្កតា កីឡាផ្សាយផ្ទាល់ ព័ត៌មាន ២៤/៧ និងភាពយន្តជាច្រើនទៀត។' + nl + nl +
+        'ទស្សនាប៉ុស្តិ៍ទូរទស្សន៍ក្នុងបញ្ជីដោយផ្ទាល់នៅលើ Telegram រួមមានប៉ុស្តិ៍ជាតិកម្ពុជា កុមារ និងតុក្កតា កីឡាផ្សាយផ្ទាល់ ព័ត៌មាន ២៤/៧ និងភាពយន្តជាច្រើនទៀត។' + nl + nl +
         '<b>លក្ខណៈពិសេស៖</b>' + nl +
         '• ចុចម្តងដើម្បីបើកទិដ្ឋភាពពេញអេក្រង់ផ្ដេកកម្រិតភាពយន្ត (Landscape Cinema Mode)' + nl +
         '• ការផ្សាយផ្ទាល់ល្បឿនលឿនកម្រិត HLS មិនទាក់ មិនកន្ត្រាក់' + nl +
@@ -272,8 +276,6 @@ def send_main_menu(chat_id):
 def get_category_channels(cat):
     if cat == 'Cambodia':
         return [c for c in CHANNELS if c.get('country') == 'KH' or c.get('group') == 'Cambodia']
-    elif cat == 'Kids':
-        return [c for c in CHANNELS if c.get('genre') == 'Kids' or 'kid' in c.get('name', '').lower() or 'cartoon' in c.get('name', '').lower()]
     elif cat == 'ALL':
         return CHANNELS
     else:
@@ -290,24 +292,8 @@ def build_category_view(cat, page=0):
     page_channels = channels[start : start + PAGE_SIZE]
 
     nl = chr(10)
-    cat_names = {
-        'Cambodia': 'ប៉ុស្តិ៍ជាតិកម្ពុជា',
-        'Kids': 'ប៉ុស្តិ៍កុមារ & តុក្កតា',
-        'Sports': 'ប៉ុស្តិ៍កីឡាផ្សាយផ្ទាល់',
-        'News': 'ប៉ុស្តិ៍ព័ត៌មាន ២៤/៧',
-        'Movies': 'ប៉ុស្តិ៍ភាពយន្ត & កុន',
-        'Documentary': 'ប៉ុស្តិ៍ភាពយន្តឯកសារ',
-        'ALL': 'ប៉ុស្តិ៍ផ្សាយទាំងអស់'
-    }
-    emoji_map = {
-        'Cambodia': '🇰🇭',
-        'Kids': '🧸',
-        'Sports': '⚽',
-        'News': '📰',
-        'Movies': '🎬',
-        'Documentary': '📚',
-        'ALL': '🌍'
-    }
+    cat_names = {key: label for key, _, label in CATEGORY_MENU}
+    emoji_map = {key: emoji for key, emoji, _ in CATEGORY_MENU}
     cat_emoji = emoji_map.get(cat, '📺')
     kh_cat_name = html.escape(cat_names.get(cat, cat))
 
@@ -379,25 +365,10 @@ def handle_callback(cb_query):
             send_main_menu(chat_id)
 
     elif data == 'nav_stats':
-        kh_count = len(get_category_channels('Cambodia'))
-        kids_count = len(get_category_channels('Kids'))
-        sports_count = len(get_category_channels('Sports'))
-        news_count = len(get_category_channels('News'))
-        movies_count = len(get_category_channels('Movies'))
-        doc_count = len(get_category_channels('Documentary'))
-
-        stats_text = (
-            '📊 <b>ស្ថិតិទិន្នន័យប្រព័ន្ធ DERLENG TV</b>' + nl + nl +
-            f'• <b>ប៉ុស្តិ៍ផ្សាយបន្តផ្ទាល់សរុប៖</b> <code>{len(CHANNELS):,}</code>' + nl +
-            f'• 🇰🇭 <b>ប៉ុស្តិ៍ជាតិកម្ពុជា៖</b> <code>{kh_count}</code>' + nl +
-            f'• 🧸 <b>ប៉ុស្តិ៍កុមារ & តុក្កតា៖</b> <code>{kids_count}</code>' + nl +
-            f'• ⚽ <b>ប៉ុស្តិ៍កីឡាផ្សាយផ្ទាល់៖</b> <code>{sports_count}</code>' + nl +
-            f'• 📰 <b>ប៉ុស្តិ៍ព័ត៌មាន ២៤/៧៖</b> <code>{news_count}</code>' + nl +
-            f'• 🎬 <b>ប៉ុស្តិ៍ភាពយន្ត & កុន៖</b> <code>{movies_count}</code>' + nl +
-            f'• 📚 <b>ប៉ុស្តិ៍ភាពយន្តឯកសារ៖</b> <code>{doc_count}</code>' + nl + nl +
-            '⚡ <b>ប្រព័ន្ធផ្សាយ៖</b> HLS Adaptive Bitrate (មិនទាក់ មិនកន្ត្រាក់)' + nl +
-            '📱 <b>កម្មវិធីចាក់៖</b> HTML5 Cinema Mode + WebApp Fullscreen'
-        )
+        stats_text = '📊 <b>ប៉ុស្តិ៍ក្នុងបញ្ជី DERLENG TV</b>' + nl + nl
+        stats_text += nl.join(
+            f'{emoji} {label}: <b>{len(get_category_channels(cat)):,}</b>'
+            for cat, emoji, label in CATEGORY_MENU if get_category_channels(cat))
         kb = [
             [{'text': '🚀 បើកទស្សនា Mini App', 'web_app': {'url': app_url}} if app_url else {'text': '📺 Player', 'callback_data': 'nav_main'}],
             [{'text': '🔙 ត្រឡប់ទៅម៉ឺនុយមេ', 'callback_data': 'nav_main'}]
@@ -447,7 +418,7 @@ def handle_callback(cb_query):
 def handle_text_command(chat_id, text):
     if not text.strip():
         return
-    cmd = text.split()[0].lower()
+    cmd = text.split()[0].split('@', 1)[0].lower()
     _, app_url = get_env_config()
     nl = chr(10)
 
@@ -458,6 +429,10 @@ def handle_text_command(chat_id, text):
             send_message(chat_id, '🚀 <b>សូមចុចខាងក្រោមដើម្បីបើក DERLENG TV៖</b>', {'inline_keyboard': [[{'text': '▶️ បើកទស្សនា DERLENG TV', 'web_app': {'url': app_url}}]]})
         else:
             send_main_menu(chat_id)
+    elif cmd.lstrip('/') in CATEGORY_COMMANDS:
+        category = CATEGORY_COMMANDS[cmd.lstrip('/')]
+        body, markup = build_category_view(category, 0)
+        send_message(chat_id, body, markup)
     elif cmd in ('/cambodia', '/kh'):
         text, markup = build_category_view('Cambodia', 0)
         send_message(chat_id, text, markup)
@@ -477,17 +452,9 @@ def handle_text_command(chat_id, text):
         text = f'📊 <b>ប៉ុស្តិ៍ផ្សាយបន្តផ្ទាល់សរុប៖</b> <code>{len(CHANNELS):,}</code> ប៉ុស្តិ៍ក្នុងបញ្ជី។'
         send_message(chat_id, text, build_main_keyboard(app_url))
     elif cmd in ('/help'):
-        help_text = (
-            '❓ <b>ពាក្យបញ្ជាផ្លូវកាត់ DERLENG TV</b>' + nl + nl +
-            '• /tv — បើកកម្មវិធីទស្សនាទូរទស្សន៍' + nl +
-            '• /cambodia — ប៉ុស្តិ៍ជាតិកម្ពុជា' + nl +
-            '• /kids — ប៉ុស្តិ៍កុមារ និងតុក្កតា' + nl +
-            '• /sports — ប៉ុស្តិ៍កីឡាផ្សាយផ្ទាល់' + nl +
-            '• /news — ព័ត៌មានជាតិ និងសកលលោក' + nl +
-            '• /movies — ភាពយន្ត & កុន' + nl +
-            '• /stats — ស្ថិតិប៉ុស្តិ៍សរុប' + nl +
-            '• /help — ការណែនាំ'
-        )
+        help_text = '❓ <b>ពាក្យបញ្ជា DERLENG TV</b>' + nl + nl
+        help_text += nl.join('/' + item['command'] + ' — ' + item['description']
+                             for item in build_bot_commands())
         send_message(chat_id, help_text, build_main_keyboard(app_url))
     else:
         send_main_menu(chat_id)
