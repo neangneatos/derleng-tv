@@ -1,0 +1,15 @@
+{
+  "catalog_version": "7cf4130f51b8af05",
+  "published": 5169,
+  "rejected": {
+    "https_required": 395,
+    "invalid_name": 7,
+    "nonstandard_port": 442,
+    "private_url": 6,
+    "unapproved_query": 80,
+    "unsupported_protocol": 73
+  },
+  "availability": "unverified",
+  "hosting": "static-https",
+  "base_url": "https://tv.derlenghub.com"
+}

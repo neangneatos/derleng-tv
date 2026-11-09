@@ -1,0 +1,52 @@
+import contextlib
+import io
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+import catalog
+import build_ui
+
+class CatalogBuildTests(unittest.TestCase):
+    def test_unsafe_urls_and_unsupported_protocols(self):
+        for url in ['http://example.org/a.m3u8','https://127.0.0.1/a.m3u8',
+                    'https://169.254.169.254/a.m3u8','https://localhost/a.m3u8',
+                    'https://10.0.0.1/a.m3u8','https://2130706433/a.m3u8',
+                    'https://example.org/a.mpd','https://example.org/a.m3u8?token=123',
+                    'https://user:pass@example.org/a.m3u8','https://example.org:8080/a.m3u8',
+                    'https://example.org/a.m3u8?auth%69d=x','javascript:alert(1)',
+                    'https://example.org/a.m3u8#secret']:
+            with self.subTest(url=url), self.assertRaises(ValueError): catalog.public_url(url)
+        self.assertEqual(catalog.public_url('https://example.org/a.m3u8?channel_id=4'), 'https://example.org/a.m3u8?channel_id=4')
+
+    def test_stable_ids_and_deduplication(self):
+        rows=[{'name':'A','url':'https://example.org/a.m3u8'}, {'name':'B','url':'https://example.org/a.m3u8'}]
+        one,rejected=catalog.sanitize_catalog(rows)
+        two,_=catalog.sanitize_catalog([{'name':'renamed','url':rows[0]['url']}])
+        self.assertEqual(len(one),1);self.assertEqual(rejected['duplicate'],1)
+        self.assertEqual(one[0]['id'],two[0]['id'])
+        self.assertEqual(one[0]['availability'],'unverified')
+
+    def test_reproducibility_and_safe_script_serialization(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); source=root/'raw.json'
+            name='</script><script>window.pwned=true</script>\u2028'
+            source.write_text(json.dumps([{'name':name,'url':'https://example.org/a.m3u8'}]))
+            with mock.patch.object(build_ui,'RAW_CHANNELS_PATH',str(source)),contextlib.redirect_stdout(io.StringIO()):
+                build_ui.build_all(root/'a');build_ui.build_all(root/'b')
+            self.assertEqual((root/'a/index.html').read_bytes(),(root/'b/index.html').read_bytes())
+            html=(root/'a/index.html').read_text()
+            self.assertNotIn('</script><script>window.pwned',html)
+            data=html.split('let channels = ',1)[1].split(';\n',1)[0]
+            self.assertEqual(json.loads(data)[0]['n'],name.strip())
+            self.assertEqual(json.loads((root/'a/channels_public.json').read_text())[0]['n'],name.strip())
+
+    def test_empty_build_does_not_replace_release(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'raw.json').write_text('[]');(root/'index.html').write_text('old')
+            with mock.patch.object(build_ui,'RAW_CHANNELS_PATH',str(root/'raw.json')),self.assertRaises(ValueError):
+                build_ui.build_all(root)
+            self.assertEqual((root/'index.html').read_text(),'old')
+
+if __name__=='__main__': unittest.main()

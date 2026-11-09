@@ -1,0 +1,13 @@
+# Private configuration and generated/runtime files
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.log
+*.log.*
+dist/
+.DS_Store
+node_modules/
+.env.*.bak
+*.zip

@@ -1,0 +1,7 @@
+{
+  "name": "derleng-tv",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {"test": "node test_frontend.cjs"},
+  "devDependencies": {"playwright": "1.60.0"}
+}

@@ -1,12 +1,14 @@
 #!/bin/bash
-cd ""/bin"
-if [ -f .env ]; then
-  export 
-fi
-if [ -z "" ]; then
-  echo 'Error: TELEGRAM_BOT_TOKEN is not set.'
-  echo 'Please add TELEGRAM_BOT_TOKEN=... to .env'
+# Optional external bot worker. The Mini App itself runs on Hostinger.
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"
+if [ ! -f .env ]; then
+  echo "Missing private .env for the optional bot worker." >&2
   exit 1
 fi
-echo 'Starting DERLENG TV Bot...'
-python3 bot.py
+if [ ! -f "${DERLENG_CATALOG_FILE:-dist/hostinger/channels_public.json}" ]; then
+  echo "Build the release first: python3 build_release.py" >&2
+  exit 1
+fi
+exec python3 bot.py
